@@ -1,0 +1,17 @@
+build/
+*.o
+*.a
+*.exe
+*.out
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+Thumbs.db
+desktop.ini
