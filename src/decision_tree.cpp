@@ -3,12 +3,10 @@
 #include <iostream>
 #include <fstream>
 #include <map>
-#include <cmath>
 #include <limits>
 
 using namespace std;
 
-// Names matching feature indices 0-11
 const char* DecisionTree::FEATURE_NAMES[12] = {
     "total_packets",
     "total_bytes",
@@ -41,8 +39,8 @@ void DecisionTree::deleteTree(Node* node)
     delete node;
 }
 
-// Get numeric value of a feature by index
-double DecisionTree::getFeature(const FlowFeatures& f, int index) const
+double DecisionTree::getFeature(const FlowFeatures& f,
+                                 int index) const
 {
     switch(index) {
         case 0:  return (double)f.total_packets;
@@ -61,8 +59,8 @@ double DecisionTree::getFeature(const FlowFeatures& f, int index) const
     }
 }
 
-// Check if all flows have the same label
-bool DecisionTree::allSameClass(const vector<FlowFeatures>& data) const
+bool DecisionTree::allSameClass(
+    const vector<FlowFeatures>& data) const
 {
     if (data.empty()) return true;
     AppType first = data[0].label;
@@ -72,8 +70,8 @@ bool DecisionTree::allSameClass(const vector<FlowFeatures>& data) const
     return true;
 }
 
-// Find the most common label in a set of flows
-AppType DecisionTree::majorityClass(const vector<FlowFeatures>& data) const
+AppType DecisionTree::majorityClass(
+    const vector<FlowFeatures>& data) const
 {
     map<AppType, int> counts;
     for (const auto& f : data) {
@@ -89,57 +87,53 @@ AppType DecisionTree::majorityClass(const vector<FlowFeatures>& data) const
             best_label = pair.first;
         }
     }
-
     return best_label;
 }
 
-// Calculate Gini impurity of a set of flows
-double DecisionTree::giniImpurity(const vector<FlowFeatures>& data) const
+double DecisionTree::giniImpurity(
+    const vector<FlowFeatures>& data) const
 {
     if (data.empty()) return 0.0;
 
-    // Count each class
     map<AppType, int> counts;
     for (const auto& f : data) {
         counts[f.label]++;
     }
 
-    double gini = 1.0;
+    double gini  = 1.0;
     double total = (double)data.size();
 
     for (const auto& pair : counts) {
         double fraction = pair.second / total;
         gini -= fraction * fraction;
     }
-
     return gini;
 }
 
-double DecisionTree::bestSplit(const vector<FlowFeatures>& data,
-                                int&    best_feature,
-                                double& best_threshold) const
+double DecisionTree::bestSplit(
+    const vector<FlowFeatures>& data,
+    int&    best_feature,
+    double& best_threshold) const
 {
     double best_gini = numeric_limits<double>::max();
-    best_feature  = -1;
-    best_threshold = 0.0;
-    double total = (double)data.size();
+    best_feature     = -1;
+    best_threshold   = 0.0;
+    double total     = (double)data.size();
 
-    // Try every feature
     for (int feature = 0; feature < 12; feature++) {
 
-        // Collect all unique values for this feature
         vector<double> values;
         for (const auto& f : data) {
             values.push_back(getFeature(f, feature));
         }
         sort(values.begin(), values.end());
-        values.erase(unique(values.begin(), values.end()),
-                     values.end());
+        values.erase(
+            unique(values.begin(), values.end()),
+            values.end()
+        );
 
-        // Try each value as a threshold
         for (double threshold : values) {
 
-            // Split data into left and right
             vector<FlowFeatures> left, right;
             for (const auto& f : data) {
                 if (getFeature(f, feature) <= threshold)
@@ -148,15 +142,12 @@ double DecisionTree::bestSplit(const vector<FlowFeatures>& data,
                     right.push_back(f);
             }
 
-            // Skip if one side is empty
             if (left.empty() || right.empty()) continue;
 
-            // Calculate weighted Gini
             double weighted_gini =
                 (left.size()  / total) * giniImpurity(left) +
                 (right.size() / total) * giniImpurity(right);
 
-            // Is this better than our best so far?
             if (weighted_gini < best_gini) {
                 best_gini      = weighted_gini;
                 best_feature   = feature;
@@ -164,48 +155,40 @@ double DecisionTree::bestSplit(const vector<FlowFeatures>& data,
             }
         }
     }
-
     return best_gini;
 }
 
-Node* DecisionTree::buildTree(vector<FlowFeatures> data, int depth)
+Node* DecisionTree::buildTree(
+    vector<FlowFeatures> data, int depth)
 {
-    // ── Stopping conditions ──
-
-    // 1. All same class → make leaf
     if (allSameClass(data)) {
         Node* leaf = new Node();
         leaf->leaf_label = data[0].label;
         return leaf;
     }
 
-    // 2. Max depth reached → make leaf with majority class
     if (depth >= max_depth) {
         Node* leaf = new Node();
         leaf->leaf_label = majorityClass(data);
         return leaf;
     }
 
-    // 3. Too few samples → make leaf
     if ((int)data.size() < min_samples) {
         Node* leaf = new Node();
         leaf->leaf_label = majorityClass(data);
         return leaf;
     }
 
-    // ── Find best split ──
     int    best_feature;
     double best_threshold;
-    double best_gini = bestSplit(data, best_feature, best_threshold);
+    bestSplit(data, best_feature, best_threshold);
 
-    // If no good split found → make leaf
     if (best_feature == -1) {
         Node* leaf = new Node();
         leaf->leaf_label = majorityClass(data);
         return leaf;
     }
 
-    // ── Split data ──
     vector<FlowFeatures> left_data, right_data;
     for (const auto& f : data) {
         if (getFeature(f, best_feature) <= best_threshold)
@@ -214,19 +197,15 @@ Node* DecisionTree::buildTree(vector<FlowFeatures> data, int depth)
             right_data.push_back(f);
     }
 
-    // ── Create internal node ──
-    Node* node = new Node();
+    Node* node          = new Node();
     node->feature_index = best_feature;
     node->threshold     = best_threshold;
-
-    // ── Recurse on children ──
-    node->left  = buildTree(left_data,  depth + 1);
-    node->right = buildTree(right_data, depth + 1);
+    node->left          = buildTree(left_data,  depth + 1);
+    node->right         = buildTree(right_data, depth + 1);
 
     return node;
 }
 
-// Public train() just calls buildTree on all data
 void DecisionTree::train(const vector<FlowFeatures>& data)
 {
     deleteTree(root);
@@ -234,16 +213,13 @@ void DecisionTree::train(const vector<FlowFeatures>& data)
     cout << "Decision Tree trained successfully!" << endl;
 }
 
-// Recursive predict helper
 AppType DecisionTree::predictNode(const Node* node,
                                    const FlowFeatures& flow) const
 {
-    // Base case: leaf node → return label
     if (node->isLeaf()) {
         return node->leaf_label;
     }
 
-    // Follow the branch
     double value = getFeature(flow, node->feature_index);
 
     if (value <= node->threshold)
@@ -252,7 +228,6 @@ AppType DecisionTree::predictNode(const Node* node,
         return predictNode(node->right, flow);
 }
 
-// Public predict
 AppType DecisionTree::predict(const FlowFeatures& flow) const
 {
     if (root == nullptr) {
@@ -262,7 +237,6 @@ AppType DecisionTree::predict(const FlowFeatures& flow) const
     return predictNode(root, flow);
 }
 
-// Print tree for debugging
 void DecisionTree::printNode(const Node* node, int depth) const
 {
     if (node == nullptr) return;
@@ -270,7 +244,7 @@ void DecisionTree::printNode(const Node* node, int depth) const
     string indent(depth * 4, ' ');
 
     if (node->isLeaf()) {
-        cout << indent << "LEAF → AppType("
+        cout << indent << "LEAF -> AppType("
              << (int)node->leaf_label << ")" << endl;
     } else {
         cout << indent << "SPLIT on ["
@@ -289,7 +263,8 @@ void DecisionTree::print() const
     printNode(root, 0);
 }
 
-void DecisionTree::saveNode(const Node* node, ofstream& file) const
+void DecisionTree::saveNode(const Node* node,
+                             ofstream& file) const
 {
     if (node == nullptr) {
         file << "NULL\n";
@@ -310,7 +285,8 @@ void DecisionTree::save(const string& filename) const
 {
     ofstream file(filename);
     if (!file.is_open()) {
-        cerr << "ERROR: Cannot save model to " << filename << endl;
+        cerr << "ERROR: Cannot save model to "
+             << filename << endl;
         return;
     }
     saveNode(root, file);
@@ -330,12 +306,11 @@ Node* DecisionTree::loadNode(ifstream& file)
         int label;
         file >> label;
         node->leaf_label = (AppType)label;
-    } else { // NODE
+    } else {
         file >> node->feature_index >> node->threshold;
         node->left  = loadNode(file);
         node->right = loadNode(file);
     }
-
     return node;
 }
 
@@ -343,7 +318,8 @@ void DecisionTree::load(const string& filename)
 {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "ERROR: Cannot load model from " << filename << endl;
+        cerr << "ERROR: Cannot load model from "
+             << filename << endl;
         return;
     }
     deleteTree(root);
