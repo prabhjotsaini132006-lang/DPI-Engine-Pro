@@ -1,0 +1,38 @@
+name: Build and Test DPI-Engine-Pro
+
+# When to run this workflow
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    # Use Ubuntu Linux (free on GitHub)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download your code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake make
+
+      # Step 3: Build the project
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make
+
+      # Step 4: Run tests
+      - name: Run tests
+        run: |
+          cd build
+          ./test_classifier
