@@ -35,15 +35,23 @@ AppType classifyFlow(const Flow&         flow,
         return sniToAppType(flow.sni);
     }
 
-    // Priority 2: Enough packets → use ML
+    // Priority 2: Enough packets → use ML with confidence check
     if (flow.features.total_packets >= 5) {
-        return classifier.predict(flow.features);
+        Prediction pred =
+            classifier.predictWithConfidence(flow.features);
+
+        // Only trust prediction if confidence is high enough
+        if (pred.confidence >= 0.6) {
+            return pred.app_type;
+        } else {
+            // Not confident enough → honest UNKNOWN
+            return AppType::UNKNOWN;
+        }
     }
 
     // Priority 3: Not enough data yet
     return AppType::UNKNOWN;
 }
-
 // ─────────────────────────────────────────
 // Print final report after processing
 // ─────────────────────────────────────────

@@ -128,26 +128,29 @@ Prediction MLClassifier::predictWithConfidence(
         return result;
     }
 
+    // Empty flow check → zero confidence
+    if (flow.total_packets == 0) {
+        result.app_type   = AppType::UNKNOWN;
+        result.confidence = 0.0;
+        return result;
+    }
+
     // Get base prediction
     result.app_type = tree.predict(flow);
 
     // Calculate confidence based on flow data quality
-    double confidence = 0.5;  // base confidence
+    double confidence = 0.5;
 
-    // More packets = more confident
     if (flow.total_packets >= 10) confidence += 0.2;
     if (flow.total_packets >= 50) confidence += 0.1;
 
-    // Port 53 = definitely DNS, very confident
     if (flow.dst_port == 53 &&
         result.app_type == AppType::DNS)
         confidence = 0.99;
 
-    // Unknown result = low confidence
     if (result.app_type == AppType::UNKNOWN)
         confidence = 0.0;
 
-    // Cap at 1.0
     if (confidence > 1.0) confidence = 1.0;
 
     result.confidence = confidence;

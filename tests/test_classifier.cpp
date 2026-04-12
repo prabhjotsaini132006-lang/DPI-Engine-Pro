@@ -172,6 +172,45 @@ void testUntrainedClassifier()
          result == AppType::UNKNOWN);
 }
 
+
+void testConfidenceThreshold()
+{
+    cout << "\n── Test 6: Confidence Threshold ──" << endl;
+
+    MLClassifier classifier;
+    classifier.train("../data/training_flows.csv");
+
+    // Perfect DNS flow → should have high confidence
+    FlowFeatures dns;
+    dns.total_packets       = 4;
+    dns.total_bytes         = 200;
+    dns.avg_packet_size     = 50.0;
+    dns.max_packet_size     = 80;
+    dns.min_packet_size     = 40;
+    dns.flow_duration_ms    = 10.0;
+    dns.packets_per_second  = 400.0;
+    dns.bytes_per_second    = 20000.0;
+    dns.avg_inter_arrival_ms = 2.5;
+    dns.dst_port            = 53;
+    dns.protocol            = 17;
+    dns.has_tls             = false;
+
+    Prediction pred = classifier.predictWithConfidence(dns);
+
+    test("DNS confidence >= 0.6",
+         pred.confidence >= 0.6);
+    test("DNS high confidence predicts DNS",
+         pred.app_type == AppType::DNS);
+
+    // Empty flow → should have zero confidence
+    FlowFeatures empty;
+    Prediction empty_pred =
+        classifier.predictWithConfidence(empty);
+
+    test("Empty flow has zero confidence",
+         empty_pred.confidence == 0.0);
+}
+
 // ─────────────────────────────────────────
 // Main — run all tests
 // ─────────────────────────────────────────
@@ -186,6 +225,7 @@ int main()
     testYouTubePrediction();
     testSaveLoad();
     testUntrainedClassifier();
+    testConfidenceThreshold();    // ← add this line
 
     cout << "\n═══════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
