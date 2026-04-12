@@ -7,8 +7,17 @@
 #include <string>
 
 
+
+// Prediction with confidence score
+struct Prediction {
+    AppType app_type   = AppType::UNKNOWN;
+    double  confidence = 0.0;  // 0.0 to 1.0
+};
+
 class MLClassifier{
 public:
+	// Predict with confidence score
+	Prediction predictWithConfidence(const FlowFeatures& flow) const;
 
 	MLClassifier();
 
