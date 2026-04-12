@@ -2,6 +2,7 @@
 #include "decision_tree.h"
 #include "ml_classifier.h"
 #include "training_data.h"
+#include "random_forest.h"
 #include <iostream>
 #include <cassert>
 
@@ -211,9 +212,52 @@ void testConfidenceThreshold()
          empty_pred.confidence == 0.0);
 }
 
+void testRandomForest()
+{
+    cout << "\n── Test 7: Random Forest ──" << endl;
+
+    TrainingData td;
+    td.loadCSV("../data/training_flows.csv");
+
+    RandomForest rf(5, 4, 2);
+    rf.train(td.getData());
+
+    test("RandomForest trained", rf.isTrained());
+
+    // DNS flow
+    FlowFeatures dns;
+    dns.total_packets        = 2;
+    dns.total_bytes          = 100;
+    dns.avg_packet_size      = 50.0;
+    dns.max_packet_size      = 60;
+    dns.min_packet_size      = 40;
+    dns.flow_duration_ms     = 5.0;
+    dns.packets_per_second   = 400.0;
+    dns.bytes_per_second     = 20000.0;
+    dns.avg_inter_arrival_ms = 2.5;
+    dns.dst_port             = 53;
+    dns.protocol             = 17;
+    dns.has_tls              = false;
+
+    AppType result = rf.predict(dns);
+    test("RandomForest predicts DNS correctly",
+         result == AppType::DNS);
+
+    Prediction pred = rf.predictWithConfidence(dns);
+    test("RandomForest confidence >= 0.6",
+         pred.confidence >= 0.6);
+
+    // Empty flow
+    FlowFeatures empty;
+    Prediction empty_pred = rf.predictWithConfidence(empty);
+    test("RandomForest empty flow confidence == 0",
+         empty_pred.confidence == 0.0);
+}
+
 // ─────────────────────────────────────────
 // Main — run all tests
 // ─────────────────────────────────────────
+
 int main()
 {
     cout << "═══════════════════════════════════" << endl;
@@ -225,7 +269,8 @@ int main()
     testYouTubePrediction();
     testSaveLoad();
     testUntrainedClassifier();
-    testConfidenceThreshold();    // ← add this line
+    testConfidenceThreshold();
+    testRandomForest();          // ← add this
 
     cout << "\n═══════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "

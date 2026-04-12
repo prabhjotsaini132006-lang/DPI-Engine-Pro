@@ -20,6 +20,7 @@ set(SOURCES
     src/training_data.cpp
     src/decision_tree.cpp
     src/ml_classifier.cpp
+    src/random_forest.cpp
     src/pcap_reader.cpp
     src/packet_parser.cpp
     src/sni_extractor.cpp
@@ -39,6 +40,7 @@ set(TEST_SOURCES
     src/training_data.cpp
     src/decision_tree.cpp
     src/ml_classifier.cpp
+    src/random_forest.cpp
     src/pcap_reader.cpp
     src/packet_parser.cpp
     src/sni_extractor.cpp
