@@ -1,0 +1,23 @@
+# DPI-Engine-Pro Blocking Rules
+# Format: RULE_TYPE value  # optional comment
+#
+# Rule types:
+#   BLOCK_APP    YOUTUBE|FACEBOOK|ZOOM|GAMING|...
+#   BLOCK_IP     192.168.1.100
+#   BLOCK_PORT   4444
+#   BLOCK_DOMAIN torrent
+
+# Block gaming traffic
+BLOCK_APP GAMING
+
+# Block specific suspicious domain
+BLOCK_DOMAIN torrent
+
+# Block suspicious port
+BLOCK_PORT 4444
+
+# Uncomment to block YouTube:
+# BLOCK_APP YOUTUBE
+
+# Uncomment to block specific IP:
+# BLOCK_IP 192.168.1.100
