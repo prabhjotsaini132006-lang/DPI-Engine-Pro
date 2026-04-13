@@ -1,11 +1,11 @@
 #include "connection_tracker.h"
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
 ConnectionTracker::ConnectionTracker(
-    int flow_timeout_sec,
-    int max_flows)
+    int flow_timeout_sec, int max_flows)
     : flow_timeout_sec(flow_timeout_sec),
       max_flows(max_flows)
 {}
@@ -14,7 +14,7 @@ Flow& ConnectionTracker::processPacket(
     const ParsedPacket& pkt,
     double timestamp_ms)
 {
-    unique_lock<mutex> lock(mutex);
+    unique_lock<std::mutex> lock(mtx);
 
     FiveTuple tuple;
     tuple.src_ip   = pkt.src_ip;
@@ -23,17 +23,14 @@ Flow& ConnectionTracker::processPacket(
     tuple.dst_port = pkt.dst_port;
     tuple.protocol = pkt.protocol;
 
-    // Find or create flow
     Flow& flow = flow_table[tuple];
 
     if (flow.features.total_packets == 0) {
-        // New flow
         flow.tuple    = tuple;
         flow.app_type = AppType::UNKNOWN;
         flow.blocked  = false;
     }
 
-    // Update features
     flow.features.update(
         pkt.packet_len,
         timestamp_ms,
@@ -42,20 +39,15 @@ Flow& ConnectionTracker::processPacket(
         pkt.is_tls
     );
 
-    // Update last seen time
     last_seen[tuple] = timestamp_ms;
-
     return flow;
 }
 
 int ConnectionTracker::expireOldFlows(
     double current_time_ms)
 {
-    unique_lock<mutex> lock(mutex);
-
-    double timeout_ms =
-        flow_timeout_sec * 1000.0;
-
+    unique_lock<std::mutex> lock(mtx);
+    double timeout_ms = flow_timeout_sec * 1000.0;
     vector<FiveTuple> to_remove;
 
     for (const auto& pair : last_seen) {
@@ -81,21 +73,18 @@ int ConnectionTracker::expireOldFlows(
 
 vector<Flow> ConnectionTracker::getAllFlows() const
 {
-    unique_lock<mutex> lock(mutex);
-
+    unique_lock<std::mutex> lock(mtx);
     vector<Flow> result;
     result.reserve(flow_table.size());
-
     for (const auto& pair : flow_table) {
         result.push_back(pair.second);
     }
-
     return result;
 }
 
 size_t ConnectionTracker::flowCount() const
 {
-    unique_lock<mutex> lock(mutex);
+    unique_lock<std::mutex> lock(mtx);
     return flow_table.size();
 }
 
@@ -103,7 +92,7 @@ void ConnectionTracker::updateSNI(
     const FiveTuple& tuple,
     const string& sni)
 {
-    unique_lock<mutex> lock(mutex);
+    unique_lock<std::mutex> lock(mtx);
     auto it = flow_table.find(tuple);
     if (it != flow_table.end()) {
         it->second.sni = sni;
@@ -114,7 +103,7 @@ void ConnectionTracker::updateAppType(
     const FiveTuple& tuple,
     AppType app_type)
 {
-    unique_lock<mutex> lock(mutex);
+    unique_lock<std::mutex> lock(mtx);
     auto it = flow_table.find(tuple);
     if (it != flow_table.end()) {
         it->second.app_type = app_type;
@@ -125,7 +114,7 @@ void ConnectionTracker::updateBlocked(
     const FiveTuple& tuple,
     bool blocked)
 {
-    unique_lock<mutex> lock(mutex);
+    unique_lock<std::mutex> lock(mtx);
     auto it = flow_table.find(tuple);
     if (it != flow_table.end()) {
         it->second.blocked = blocked;
@@ -134,8 +123,7 @@ void ConnectionTracker::updateBlocked(
 
 void ConnectionTracker::printSummary() const
 {
-    unique_lock<mutex> lock(mutex);
-
+    unique_lock<std::mutex> lock(mtx);
     cout << "ConnectionTracker: "
          << flow_table.size()
          << " active flows" << endl;
@@ -149,18 +137,11 @@ void ConnectionTracker::printSummary() const
         if (f.blocked) blocked_count++;
     }
 
-    cout << "  YOUTUBE:  "
-         << app_counts[(int)AppType::YOUTUBE]  << endl;
-    cout << "  DNS:      "
-         << app_counts[(int)AppType::DNS]      << endl;
-    cout << "  WHATSAPP: "
-         << app_counts[(int)AppType::WHATSAPP] << endl;
-    cout << "  ZOOM:     "
-         << app_counts[(int)AppType::ZOOM]     << endl;
-    cout << "  GAMING:   "
-         << app_counts[(int)AppType::GAMING]   << endl;
-    cout << "  UNKNOWN:  "
-         << app_counts[(int)AppType::UNKNOWN]  << endl;
-    cout << "  BLOCKED:  "
-         << blocked_count                       << endl;
+    cout << "  YOUTUBE:  " << app_counts[(int)AppType::YOUTUBE]  << endl;
+    cout << "  DNS:      " << app_counts[(int)AppType::DNS]      << endl;
+    cout << "  WHATSAPP: " << app_counts[(int)AppType::WHATSAPP] << endl;
+    cout << "  ZOOM:     " << app_counts[(int)AppType::ZOOM]     << endl;
+    cout << "  GAMING:   " << app_counts[(int)AppType::GAMING]   << endl;
+    cout << "  UNKNOWN:  " << app_counts[(int)AppType::UNKNOWN]  << endl;
+    cout << "  BLOCKED:  " << blocked_count                      << endl;
 }
