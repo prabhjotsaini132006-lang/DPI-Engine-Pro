@@ -32,8 +32,8 @@ set(SHARED_SOURCES
     src/dpi_engine.cpp
     src/signal_handler.cpp
     src/logger.cpp
+    src/model_evaluator.cpp
 )
-
 # ── Single-threaded executable ──
 add_executable(dpi_engine_pro
     ${SHARED_SOURCES}

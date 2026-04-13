@@ -2,3 +2,11 @@
 [2026-04-13 15:38:01] [INFO ] [TestSuite] Info message
 [2026-04-13 15:38:01] [WARN ] [TestSuite] Warning message
 [2026-04-13 15:38:01] [ERROR] [TestSuite] Error message
+[2026-04-13 15:44:22] [DEBUG] [TestSuite] Debug message
+[2026-04-13 15:44:22] [INFO ] [TestSuite] Info message
+[2026-04-13 15:44:22] [WARN ] [TestSuite] Warning message
+[2026-04-13 15:44:22] [ERROR] [TestSuite] Error message
+[2026-04-13 15:46:53] [DEBUG] [TestSuite] Debug message
+[2026-04-13 15:46:53] [INFO ] [TestSuite] Info message
+[2026-04-13 15:46:53] [WARN ] [TestSuite] Warning message
+[2026-04-13 15:46:53] [ERROR] [TestSuite] Error message

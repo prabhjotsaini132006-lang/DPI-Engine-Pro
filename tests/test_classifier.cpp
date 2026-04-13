@@ -7,6 +7,7 @@
 #include "fast_path.h"
 #include "types.h"
 #include "logger.h"
+#include "model_evaluator.h"
 #include <iostream>
 #include <cassert>
 
@@ -425,6 +426,27 @@ void testLogger()
     log.setLevel(LogLevel::INFO);
 }
 
+void testModelEvaluator()
+{
+    cout << "\n── Test 14: Model Evaluator ──" << endl;
+
+    TrainingData td;
+    td.loadCSV("../data/training_flows.csv");
+
+    ModelEvaluator evaluator(0.2);
+
+    EvalResult result = evaluator.evaluate(
+        td.getData());
+
+    test("Evaluator runs successfully",
+         result.total_samples >= 0);
+    test("Correct + incorrect == total",
+         result.correct + result.incorrect
+         == result.total_samples);
+    test("Accuracy between 0 and 1",
+         result.overall_accuracy >= 0.0 &&
+         result.overall_accuracy <= 1.0);
+}
 // ─────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────
@@ -447,7 +469,7 @@ int main()
     testSinglePacketFlow();
     testRuleManagerFile();
     testLogger();          // ← make sure this is here
-
+    testModelEvaluator();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"
