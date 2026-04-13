@@ -1,4 +1,4 @@
-\# DPI-Engine-Pro
+# DPI-Engine-Pro v2.0.0
 
 
 
@@ -26,6 +26,18 @@ Original approach: substring matching on SNI domain names.
 
 This project: hybrid SNI + Decision Tree ML classifier.
 
+## Comparison: Original vs DPI-Engine-Pro
+
+| Feature | Original | v1.0.0 | v2.0.0 |
+|---|---|---|---|
+| Classification | Substring | Decision Tree | Random Forest |
+| Without SNI | NO | YES | YES |
+| Confidence score | NO | YES | YES |
+| Rule manager | Basic | Basic | File-based |
+| Flow expiry | NO | NO | YES |
+| Fast path cache | NO | NO | YES |
+| Multi-threading | Basic | NO | YES |
+| Tests | NO | 17 | 24 |
 
 
 \## Why ML?
