@@ -1,5 +1,6 @@
 #include "dpi_engine.h"
 #include "pcap_reader.h"
+#include "signal_handler.h"
 #include <iostream>
 #include <iomanip>
 
@@ -202,9 +203,16 @@ bool DPIEngine::processPcap(const string& pcap_file)
     uint64_t  packet_count = 0;
 
     while (reader.readNext(raw)) {
-        processPacket(raw);
-        packet_count++;
 
+    // Check for Ctrl+C graceful shutdown
+    if (SignalHandler::shouldStop()) {
+        cout << "\nDPIEngine: Stopping gracefully..."
+             << endl;
+        break;
+    }
+
+    processPacket(raw);
+    packet_count++;
         if (packet_count % 10000 == 0) {
             conn_tracker.expireOldFlows(
                 raw.timestamp_ms);

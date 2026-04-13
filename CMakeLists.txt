@@ -30,6 +30,7 @@ set(SHARED_SOURCES
     src/fast_path.cpp
     src/load_balancer.cpp
     src/dpi_engine.cpp
+    src/signal_handler.cpp
 )
 
 # ── Single-threaded executable ──
