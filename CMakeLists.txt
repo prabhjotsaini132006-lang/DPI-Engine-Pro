@@ -31,6 +31,7 @@ set(SHARED_SOURCES
     src/load_balancer.cpp
     src/dpi_engine.cpp
     src/signal_handler.cpp
+    src/logger.cpp
 )
 
 # ── Single-threaded executable ──

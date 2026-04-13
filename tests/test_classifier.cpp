@@ -6,6 +6,7 @@
 #include "rule_manager.h"
 #include "fast_path.h"
 #include "types.h"
+#include "logger.h"
 #include <iostream>
 #include <cassert>
 
@@ -404,6 +405,26 @@ void testRuleManagerFile()
     test("Has at least 1 rule", rm.ruleCount() >= 1);
 }
 
+void testLogger()
+{
+    cout << "\n── Test 13: Logger ──" << endl;
+
+    Logger& log = Logger::instance();
+
+    log.setLevel(LogLevel::DEBUG);
+    log.setLogFile("../data/test_log.txt");
+
+    log.debug("Debug message",  "TestSuite");
+    log.info("Info message",    "TestSuite");
+    log.warn("Warning message", "TestSuite");
+    log.error("Error message",  "TestSuite");
+
+    test("Logger instance works", true);
+    test("Logger level settable", true);
+
+    log.setLevel(LogLevel::INFO);
+}
+
 // ─────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────
@@ -425,6 +446,7 @@ int main()
     testTrainingData();
     testSinglePacketFlow();
     testRuleManagerFile();
+    testLogger();          // ← make sure this is here
 
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
