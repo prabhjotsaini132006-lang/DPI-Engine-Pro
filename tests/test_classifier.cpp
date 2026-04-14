@@ -8,6 +8,7 @@
 #include "types.h"
 #include "logger.h"
 #include "model_evaluator.h"
+#include "feature_importance.h"
 #include <iostream>
 #include <cassert>
 
@@ -447,6 +448,39 @@ void testModelEvaluator()
          result.overall_accuracy >= 0.0 &&
          result.overall_accuracy <= 1.0);
 }
+
+void testFeatureImportance()
+{
+    cout << "\n── Test 15: Feature Importance ──"
+         << endl;
+
+    TrainingData td;
+    td.loadCSV("../data/training_flows.csv");
+
+    DecisionTree tree(5, 2);
+    tree.train(td.getData());
+
+    FeatureImportance fi;
+    fi.calculate(tree, td.getData());
+
+    // Print the report
+    fi.printReport();
+
+
+   // Correct — at least one feature should have importance
+	double max_importance = 0.0;
+	for (int i = 0; i < 12; i++) {
+    	if (fi.getImportance(i) > max_importance) {
+        max_importance = fi.getImportance(i);
+    }
+	}
+	test("At least one feature has importance",
+     	max_importance > 0.0);
+    test("Importance scores valid",
+         fi.getImportance(0) >= 0.0 &&
+         fi.getImportance(0) <= 1.0);
+}
+
 // ─────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────
@@ -470,6 +504,7 @@ int main()
     testRuleManagerFile();
     testLogger();          // ← make sure this is here
     testModelEvaluator();
+    testFeatureImportance();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"

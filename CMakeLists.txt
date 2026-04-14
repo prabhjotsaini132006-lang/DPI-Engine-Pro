@@ -33,6 +33,7 @@ set(SHARED_SOURCES
     src/signal_handler.cpp
     src/logger.cpp
     src/model_evaluator.cpp
+    src/feature_importance.cpp
 )
 # ── Single-threaded executable ──
 add_executable(dpi_engine_pro

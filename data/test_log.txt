@@ -10,3 +10,11 @@
 [2026-04-13 15:46:53] [INFO ] [TestSuite] Info message
 [2026-04-13 15:46:53] [WARN ] [TestSuite] Warning message
 [2026-04-13 15:46:53] [ERROR] [TestSuite] Error message
+[2026-04-13 15:52:24] [DEBUG] [TestSuite] Debug message
+[2026-04-13 15:52:24] [INFO ] [TestSuite] Info message
+[2026-04-13 15:52:24] [WARN ] [TestSuite] Warning message
+[2026-04-13 15:52:24] [ERROR] [TestSuite] Error message
+[2026-04-14 13:53:51] [DEBUG] [TestSuite] Debug message
+[2026-04-14 13:53:51] [INFO ] [TestSuite] Info message
+[2026-04-14 13:53:51] [WARN ] [TestSuite] Warning message
+[2026-04-14 13:53:51] [ERROR] [TestSuite] Error message
