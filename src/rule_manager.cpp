@@ -170,6 +170,10 @@ AppType RuleManager::stringToAppType(
     if (s == "HTTP")     return AppType::HTTP;
     if (s == "HTTPS")    return AppType::HTTPS;
     if (s == "DNS")      return AppType::DNS;
+    if (s == "NETFLIX")  return AppType::NETFLIX;
+    if (s == "SPOTIFY")  return AppType::SPOTIFY;
+    if (s == "STEAM")    return AppType::STEAM;
+    if (s == "TIKTOK")   return AppType::TIKTOK;
     return AppType::UNKNOWN;
 }
 

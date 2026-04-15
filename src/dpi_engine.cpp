@@ -18,7 +18,6 @@ void DPIStats::print() const
     cout << "Cache hits:        " << cache_hits        << endl;
     cout << "Unknown flows:     " << unknown_flows     << endl;
 }
-
 DPIEngine::DPIEngine(const DPIConfig& config)
     : config(config),
       random_forest(config.rf_trees,

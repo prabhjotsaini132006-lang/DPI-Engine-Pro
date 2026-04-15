@@ -64,6 +64,10 @@ inline std::string appTypeToString(AppType app) {
         case AppType::ZOOM:     return "ZOOM";
         case AppType::WHATSAPP: return "WHATSAPP";
         case AppType::GAMING:   return "GAMING";
+        case AppType::NETFLIX:  return "NETFLIX";
+        case AppType::SPOTIFY:  return "SPOTIFY";
+        case AppType::STEAM:    return "STEAM";
+        case AppType::TIKTOK:   return "TIKTOK";
         default:                return "UNKNOWN";
     }
 }
@@ -74,24 +78,64 @@ inline std::string appTypeToString(AppType app) {
 // ─────────────────────────────────────────
 inline AppType sniToAppType(const std::string& sni) {
     // YouTube and its CDNs
-    if (sni.find("youtube")     != std::string::npos) return AppType::YOUTUBE;
-    if (sni.find("googlevideo") != std::string::npos) return AppType::YOUTUBE;
-    if (sni.find("ytimg")       != std::string::npos) return AppType::YOUTUBE;
+    if (sni.find("youtube")      != std::string::npos)
+        return AppType::YOUTUBE;
+    if (sni.find("googlevideo")  != std::string::npos)
+        return AppType::YOUTUBE;
+    if (sni.find("ytimg")        != std::string::npos)
+        return AppType::YOUTUBE;
 
     // Facebook and its CDNs
-    if (sni.find("facebook")    != std::string::npos) return AppType::FACEBOOK;
-    if (sni.find("fbcdn")       != std::string::npos) return AppType::FACEBOOK;
-    if (sni.find("instagram")   != std::string::npos) return AppType::FACEBOOK;
+    if (sni.find("facebook")     != std::string::npos)
+        return AppType::FACEBOOK;
+    if (sni.find("fbcdn")        != std::string::npos)
+        return AppType::FACEBOOK;
+    if (sni.find("instagram")    != std::string::npos)
+        return AppType::FACEBOOK;
 
     // Zoom
-    if (sni.find("zoom")        != std::string::npos) return AppType::ZOOM;
+    if (sni.find("zoom")         != std::string::npos)
+        return AppType::ZOOM;
 
     // WhatsApp
-    if (sni.find("whatsapp")    != std::string::npos) return AppType::WHATSAPP;
-    if (sni.find("wa.me")       != std::string::npos) return AppType::WHATSAPP;
+    if (sni.find("whatsapp")     != std::string::npos)
+        return AppType::WHATSAPP;
+    if (sni.find("wa.me")        != std::string::npos)
+        return AppType::WHATSAPP;
+
+    // Netflix
+    if (sni.find("netflix")      != std::string::npos)
+        return AppType::NETFLIX;
+    if (sni.find("nflxvideo")    != std::string::npos)
+        return AppType::NETFLIX;
+    if (sni.find("nflximg")      != std::string::npos)
+        return AppType::NETFLIX;
+
+    // Spotify
+    if (sni.find("spotify")      != std::string::npos)
+        return AppType::SPOTIFY;
+    if (sni.find("scdn.co")      != std::string::npos)
+        return AppType::SPOTIFY;
+
+    // Steam
+    if (sni.find("steam")        != std::string::npos)
+        return AppType::STEAM;
+    if (sni.find("steampowered") != std::string::npos)
+        return AppType::STEAM;
+    if (sni.find("steamcontent") != std::string::npos)
+        return AppType::STEAM;
+
+    // TikTok
+    if (sni.find("tiktok")       != std::string::npos)
+        return AppType::TIKTOK;
+    if (sni.find("tiktokcdn")    != std::string::npos)
+        return AppType::TIKTOK;
+    if (sni.find("muscdn")       != std::string::npos)
+        return AppType::TIKTOK;
 
     // Generic
-    if (sni.find("google")      != std::string::npos) return AppType::HTTPS;
+    if (sni.find("google")       != std::string::npos)
+        return AppType::HTTPS;
 
     return AppType::UNKNOWN;
 }

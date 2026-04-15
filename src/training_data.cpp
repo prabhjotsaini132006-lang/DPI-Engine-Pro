@@ -18,7 +18,8 @@ vector<string> TrainingData::splitCSVLine(const string& line) const
     return fields;
 }
 
-AppType TrainingData::stringToAppType(const string& label) const
+AppType TrainingData::stringToAppType(
+    const string& label) const
 {
     if (label == "YOUTUBE")  return AppType::YOUTUBE;
     if (label == "DNS")      return AppType::DNS;
@@ -28,6 +29,10 @@ AppType TrainingData::stringToAppType(const string& label) const
     if (label == "HTTPS")    return AppType::HTTPS;
     if (label == "FACEBOOK") return AppType::FACEBOOK;
     if (label == "GAMING")   return AppType::GAMING;
+    if (label == "NETFLIX")  return AppType::NETFLIX;
+    if (label == "SPOTIFY")  return AppType::SPOTIFY;
+    if (label == "STEAM")    return AppType::STEAM;
+    if (label == "TIKTOK")   return AppType::TIKTOK;
     return AppType::UNKNOWN;
 }
 

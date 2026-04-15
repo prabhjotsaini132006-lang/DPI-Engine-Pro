@@ -128,8 +128,8 @@ void ConnectionTracker::printSummary() const
          << flow_table.size()
          << " active flows" << endl;
 
-    int app_counts[9] = {0};
-    int blocked_count = 0;
+    int app_counts[13] = {0};
+    int blocked_count  = 0;
 
     for (const auto& pair : flow_table) {
         const Flow& f = pair.second;
@@ -137,11 +137,26 @@ void ConnectionTracker::printSummary() const
         if (f.blocked) blocked_count++;
     }
 
-    cout << "  YOUTUBE:  " << app_counts[(int)AppType::YOUTUBE]  << endl;
-    cout << "  DNS:      " << app_counts[(int)AppType::DNS]      << endl;
-    cout << "  WHATSAPP: " << app_counts[(int)AppType::WHATSAPP] << endl;
-    cout << "  ZOOM:     " << app_counts[(int)AppType::ZOOM]     << endl;
-    cout << "  GAMING:   " << app_counts[(int)AppType::GAMING]   << endl;
-    cout << "  UNKNOWN:  " << app_counts[(int)AppType::UNKNOWN]  << endl;
-    cout << "  BLOCKED:  " << blocked_count                      << endl;
+    cout << "  YOUTUBE:  "
+         << app_counts[(int)AppType::YOUTUBE]  << endl;
+    cout << "  DNS:      "
+         << app_counts[(int)AppType::DNS]      << endl;
+    cout << "  WHATSAPP: "
+         << app_counts[(int)AppType::WHATSAPP] << endl;
+    cout << "  ZOOM:     "
+         << app_counts[(int)AppType::ZOOM]     << endl;
+    cout << "  GAMING:   "
+         << app_counts[(int)AppType::GAMING]   << endl;
+    cout << "  NETFLIX:  "
+         << app_counts[(int)AppType::NETFLIX]  << endl;
+    cout << "  SPOTIFY:  "
+         << app_counts[(int)AppType::SPOTIFY]  << endl;
+    cout << "  STEAM:    "
+         << app_counts[(int)AppType::STEAM]    << endl;
+    cout << "  TIKTOK:   "
+         << app_counts[(int)AppType::TIKTOK]   << endl;
+    cout << "  UNKNOWN:  "
+         << app_counts[(int)AppType::UNKNOWN]  << endl;
+    cout << "  BLOCKED:  "
+         << blocked_count                       << endl;
 }

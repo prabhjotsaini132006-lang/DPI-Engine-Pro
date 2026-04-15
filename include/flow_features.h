@@ -13,7 +13,11 @@ enum class AppType {
     FACEBOOK = 5,
     ZOOM     = 6,
     WHATSAPP = 7,
-    GAMING   = 8
+    GAMING   = 8,
+    NETFLIX  = 9,
+    SPOTIFY  = 10,
+    STEAM    = 11,
+    TIKTOK   = 12
 };
 
 struct FlowFeatures {
