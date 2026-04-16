@@ -51,8 +51,62 @@ ParsedPacket PacketParser::parse(const RawPacket& raw) const
 
     uint16_t ethertype = readUint16BE(data + 12);
 
-    // We only handle IPv4 (ethertype 0x0800)
-    if (ethertype != 0x0800) return pkt;
+    // Handle both IPv4 and IPv6
+bool is_ipv4 = (ethertype == 0x0800);
+bool is_ipv6 = (ethertype == 0x86DD);
+
+if (!is_ipv4 && !is_ipv6) return pkt;
+
+if (is_ipv6) {
+    // IPv6 Header is fixed 40 bytes
+    // [version+tc+flow:4][payload_len:2][next_header:1]
+    // [hop_limit:1][src_addr:16][dst_addr:16]
+    const uint8_t* ip6 = data + 14;
+    size_t ip6_len = len - 14;
+
+    if (ip6_len < 40) return pkt;
+
+    pkt.protocol = ip6[6];  // next header
+
+    // Use last 4 bytes of src/dst as IPv4-like ID
+    pkt.src_ip = readUint32BE(ip6 + 8  + 12);
+    pkt.dst_ip = readUint32BE(ip6 + 24 + 12);
+
+    // Transport starts after 40 byte IPv6 header
+    const uint8_t* transport = ip6 + 40;
+    size_t transport_len = ip6_len - 40;
+
+    if (pkt.protocol == 6) {
+        // TCP
+        if (transport_len < 20) return pkt;
+        pkt.src_port = readUint16BE(transport);
+        pkt.dst_port = readUint16BE(transport + 2);
+        uint8_t tcp_hdr_len =
+            ((transport[12] >> 4) & 0x0F) * 4;
+        if (transport_len < tcp_hdr_len) return pkt;
+        pkt.payload     = transport + tcp_hdr_len;
+        pkt.payload_len = (uint16_t)(
+            transport_len - tcp_hdr_len);
+    } else if (pkt.protocol == 17) {
+        // UDP
+        if (transport_len < 8) return pkt;
+        pkt.src_port    = readUint16BE(transport);
+        pkt.dst_port    = readUint16BE(transport + 2);
+        pkt.payload     = transport + 8;
+        pkt.payload_len = (uint16_t)(
+            transport_len - 8);
+    } else {
+        return pkt;
+    }
+
+    if (pkt.payload && pkt.payload_len > 0) {
+        pkt.is_tls = detectTLS(
+            pkt.payload, pkt.payload_len);
+    }
+
+    pkt.valid = true;
+    return pkt;
+}
 
     // ── IP Header ──
     const uint8_t* ip = data + 14;
