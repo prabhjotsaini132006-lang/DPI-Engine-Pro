@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "model_evaluator.h"
 #include "feature_importance.h"
+#include "config_parser.h"
 #include <iostream>
 #include <cassert>
 
@@ -489,6 +490,40 @@ void testFeatureImportance()
          fi.getImportance(0) >= 0.0 &&
          fi.getImportance(0) <= 1.0);
 }
+void testConfigParser()
+{
+    cout << "\n── Test 16: Config Parser ──" << endl;
+
+    ConfigParser parser;
+    bool loaded = parser.load("../data/config.ini");
+    test("Config file loaded", loaded);
+
+    string rf = parser.get("ml",
+                            "use_random_forest",
+                            "false");
+    test("RF setting reads correctly",
+         rf == "true");
+
+    string trees = parser.get("ml", "rf_trees", "0");
+    test("RF trees reads correctly",
+         trees == "10");
+
+    string threads = parser.get("engine",
+                                 "worker_threads",
+                                 "0");
+    test("Worker threads reads correctly",
+         threads == "4");
+
+    // Apply to config
+    DPIConfig config;
+    parser.applyTo(config);
+    test("Config applies RF trees correctly",
+         config.rf_trees == 10);
+    test("Config applies confidence correctly",
+         config.min_confidence == 0.6);
+    test("Config applies threads correctly",
+         config.worker_threads == 4);
+}
 
 // ─────────────────────────────────────────
 // Main
@@ -514,6 +549,7 @@ int main()
     testLogger();          // ← make sure this is here
     testModelEvaluator();
     testFeatureImportance();
+    testConfigParser();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"
