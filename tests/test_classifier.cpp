@@ -10,6 +10,7 @@
 #include "model_evaluator.h"
 #include "feature_importance.h"
 #include "config_parser.h"
+#include "stats_dashboard.h"
 #include <iostream>
 #include <cassert>
 
@@ -525,6 +526,27 @@ void testConfigParser()
          config.worker_threads == 4);
 }
 
+void testStatsDashboard()
+{
+    cout << "\n── Test 17: Stats Dashboard ──" << endl;
+
+    StatsDashboard dashboard(1);
+    test("Dashboard created", true);
+    test("Dashboard not running initially",
+         !dashboard.isRunning());
+
+    // Create dummy stats
+    DPIStats stats;
+    stats.packets_processed = 1000;
+    stats.flows_classified  = 50;
+    stats.flows_blocked     = 5;
+
+    // Test manual snapshot
+    dashboard.printSnapshot();
+    test("Snapshot prints without crash", true);
+}
+
+
 // ─────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────
@@ -550,6 +572,7 @@ int main()
     testModelEvaluator();
     testFeatureImportance();
     testConfigParser();
+    testStatsDashboard();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"

@@ -35,8 +35,8 @@ set(SHARED_SOURCES
     src/model_evaluator.cpp
     src/feature_importance.cpp
     src/config_parser.cpp
-)
-# ── Single-threaded executable ──
+    src/stats_dashboard.cpp
+)# ── Single-threaded executable ──
 add_executable(dpi_engine_pro
     ${SHARED_SOURCES}
     src/main_pro.cpp
