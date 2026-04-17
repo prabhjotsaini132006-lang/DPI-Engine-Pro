@@ -38,3 +38,7 @@
 [2026-04-16 13:50:30] [INFO ] [TestSuite] Info message
 [2026-04-16 13:50:30] [WARN ] [TestSuite] Warning message
 [2026-04-16 13:50:30] [ERROR] [TestSuite] Error message
+[2026-04-16 19:25:27] [DEBUG] [TestSuite] Debug message
+[2026-04-16 19:25:27] [INFO ] [TestSuite] Info message
+[2026-04-16 19:25:27] [WARN ] [TestSuite] Warning message
+[2026-04-16 19:25:27] [ERROR] [TestSuite] Error message

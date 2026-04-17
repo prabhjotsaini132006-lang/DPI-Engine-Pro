@@ -11,6 +11,8 @@
 #include "feature_importance.h"
 #include "config_parser.h"
 #include "stats_dashboard.h"
+#include "benchmark.h"
+#include "ml_metrics.h"
 #include <iostream>
 #include <cassert>
 
@@ -546,6 +548,59 @@ void testStatsDashboard()
     test("Snapshot prints without crash", true);
 }
 
+void testBenchmark()
+{
+    cout << "\n── Test 18: Benchmark ──" << endl;
+
+    Benchmark bench;
+
+    bench.start("test_operation");
+    for (int i = 0; i < 1000; i++) {
+        bench.recordPacket(1400);
+        bench.recordClassification();
+    }
+    bench.stop("test_operation");
+
+    test("Packets recorded correctly",
+         bench.packetsPerSecond() > 0.0);
+    test("Latency tracked",
+         bench.avgLatencyUs() >= 0.0);
+
+    bench.printReport();
+    test("Report printed without crash", true);
+}
+
+void testMLMetrics()
+{
+    cout << "\n── Test 19: ML Metrics ──" << endl;
+
+    MLMetrics metrics;
+
+    // Add some predictions
+    metrics.addPrediction(AppType::DNS,
+                          AppType::DNS);
+    metrics.addPrediction(AppType::DNS,
+                          AppType::DNS);
+    metrics.addPrediction(AppType::YOUTUBE,
+                          AppType::YOUTUBE);
+    metrics.addPrediction(AppType::YOUTUBE,
+                          AppType::NETFLIX);  // wrong
+    metrics.addPrediction(AppType::ZOOM,
+                          AppType::ZOOM);
+
+    metrics.calculate();
+
+    double acc = metrics.accuracy();
+    test("Accuracy is 0.8 (4/5 correct)",
+         acc >= 0.79 && acc <= 0.81);
+    test("Macro F1 > 0",
+         metrics.macroF1() > 0.0);
+
+    metrics.printReport();
+    metrics.printConfusionMatrix();
+    test("Metrics printed without crash", true);
+}
+
 
 // ─────────────────────────────────────────
 // Main
@@ -573,6 +628,8 @@ int main()
     testFeatureImportance();
     testConfigParser();
     testStatsDashboard();
+    testBenchmark();
+    testMLMetrics();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"
