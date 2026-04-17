@@ -38,6 +38,7 @@ set(SHARED_SOURCES
     src/stats_dashboard.cpp
     src/benchmark.cpp
     src/ml_metrics.cpp
+    src/protocol_parser.cpp
 )
 # ── Single-threaded executable ──
 add_executable(dpi_engine_pro

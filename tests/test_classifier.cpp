@@ -13,6 +13,7 @@
 #include "stats_dashboard.h"
 #include "benchmark.h"
 #include "ml_metrics.h"
+#include "protocol_parser.h"
 #include <iostream>
 #include <cassert>
 
@@ -601,6 +602,96 @@ void testMLMetrics()
     test("Metrics printed without crash", true);
 }
 
+void testHTTPParser()
+{
+    cout << "\n── Test 20: HTTP Parser ──" << endl;
+
+    ProtocolParser pp;
+
+    // Valid HTTP GET request
+    string http_req =
+        "GET /index.html HTTP/1.1\r\n"
+        "Host: www.example.com\r\n"
+        "User-Agent: TestAgent\r\n"
+        "\r\n";
+
+    HTTPData result = pp.parseHTTP(
+        (const uint8_t*)http_req.c_str(),
+        (uint16_t)http_req.size());
+
+    test("HTTP request parsed",    result.valid);
+    test("Method is GET",
+         result.method == "GET");
+    test("URL parsed correctly",
+         result.url == "/index.html");
+    test("Host header extracted",
+         result.host == "www.example.com");
+    test("Is request flag set",    result.is_request);
+
+    // HTTP Response
+    string http_resp =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/html\r\n"
+        "\r\n";
+
+    HTTPData resp = pp.parseHTTP(
+        (const uint8_t*)http_resp.c_str(),
+        (uint16_t)http_resp.size());
+
+    test("HTTP response parsed",   resp.valid);
+    test("Status code is 200",     resp.status == 200);
+    test("Is response flag set",   resp.is_response);
+}
+
+void testDNSParser()
+{
+    cout << "\n── Test 21: DNS Parser ──" << endl;
+
+    ProtocolParser pp;
+
+    // Craft a simple DNS query packet for "google.com"
+    // DNS Header: ID=1234, QR=0 (query), QDCOUNT=1
+    uint8_t dns_pkt[] = {
+        0x04, 0xD2,  // ID = 1234
+        0x01, 0x00,  // Flags: standard query
+        0x00, 0x01,  // QDCOUNT = 1
+        0x00, 0x00,  // ANCOUNT = 0
+        0x00, 0x00,  // NSCOUNT = 0
+        0x00, 0x00,  // ARCOUNT = 0
+        // QNAME: google.com
+        0x06, 'g','o','o','g','l','e',
+        0x03, 'c','o','m',
+        0x00,        // end of name
+        0x00, 0x01,  // QTYPE = A
+        0x00, 0x01   // QCLASS = IN
+    };
+
+    DNSData result = pp.parseDNS(
+        dns_pkt, sizeof(dns_pkt));
+
+    test("DNS query parsed",       result.valid);
+    test("Query name is google.com",
+         result.query_name == "google.com");
+    test("Query type is A",
+         result.query_type_str == "A");
+    test("Is query flag set",      result.is_query);
+}
+
+void testTLSParser()
+{
+    cout << "\n── Test 22: TLS Parser ──" << endl;
+
+    ProtocolParser pp;
+
+    // Non-TLS data
+    uint8_t not_tls[] = {0x00, 0x01, 0x02, 0x03};
+    TLSData result = pp.parseTLS(
+        not_tls, sizeof(not_tls));
+    test("Non-TLS data rejected", !result.valid);
+
+    test("TLS version strings work",
+         pp.parseTLS(nullptr, 0).valid == false);
+}
 
 // ─────────────────────────────────────────
 // Main
@@ -630,6 +721,9 @@ int main()
     testStatsDashboard();
     testBenchmark();
     testMLMetrics();
+    testHTTPParser();
+    testDNSParser();
+    testTLSParser();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"
