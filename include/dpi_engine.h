@@ -13,6 +13,9 @@
 #include "fast_path.h"
 #include "thread_safe_queue.h"
 #include "training_data.h"
+#include "anomaly_detector.h"
+#include "benchmark.h"
+#include "stream_reassembler.h"
 #include <string>
 #include <atomic>
 #include <memory>
@@ -32,17 +35,22 @@ struct DPIConfig {
     int         cache_timeout_sec  = 300;
     bool        verbose            = false;
     bool        print_blocked_only = false;
+    bool        enable_reassembly  = true;
+    bool        enable_anomaly     = true;
+    bool        enable_benchmark   = true;
 };
 
 struct DPIStats {
-    std::atomic<uint64_t> packets_processed {0};
-    std::atomic<uint64_t> packets_dropped   {0};
-    std::atomic<uint64_t> flows_classified  {0};
-    std::atomic<uint64_t> flows_blocked     {0};
-    std::atomic<uint64_t> sni_classified    {0};
-    std::atomic<uint64_t> ml_classified     {0};
-    std::atomic<uint64_t> cache_hits        {0};
-    std::atomic<uint64_t> unknown_flows     {0};
+    std::atomic<uint64_t> packets_processed   {0};
+    std::atomic<uint64_t> packets_dropped     {0};
+    std::atomic<uint64_t> flows_classified    {0};
+    std::atomic<uint64_t> flows_blocked       {0};
+    std::atomic<uint64_t> sni_classified      {0};
+    std::atomic<uint64_t> ml_classified       {0};
+    std::atomic<uint64_t> cache_hits          {0};
+    std::atomic<uint64_t> unknown_flows       {0};
+    std::atomic<uint64_t> alerts_generated    {0};
+    std::atomic<uint64_t> streams_reassembled {0};
 
     void print() const;
 };
@@ -54,8 +62,11 @@ public:
 
     bool initialize();
     bool processPcap(const std::string& pcap_file);
-    const DPIStats& getStats() const;
-    void printReport() const;
+    void processPacket(const RawPacket& raw);   // public for live mode
+
+    const DPIStats&  getStats()     const;
+    const Benchmark& getBenchmark() const;
+    void             printReport()  const;
 
 private:
     DPIConfig         config;
@@ -67,8 +78,10 @@ private:
     FastPath          fast_path;
     PacketParser      parser;
     SNIExtractor      sni_extractor;
+    AnomalyDetector   anomaly_detector;
+    Benchmark         bench;
+    StreamReassembler reassembler;
 
-    void    processPacket(const RawPacket& raw);
     AppType classifyFlow(Flow& flow);
     void    printIP(uint32_t ip) const;
 };
