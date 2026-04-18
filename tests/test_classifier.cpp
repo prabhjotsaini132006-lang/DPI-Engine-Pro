@@ -15,6 +15,7 @@
 #include "ml_metrics.h"
 #include "protocol_parser.h"
 #include "anomaly_detector.h"
+#include "live_capture.h"
 #include <iostream>
 #include <cassert>
 
@@ -767,6 +768,31 @@ void testAnomalyDetector()
      detector.alertCount() == 0);
 }
 
+void testLiveCapture()
+{
+    cout << "\n── Test 24: Live Capture ──" << endl;
+
+    // Test interface listing (no crash)
+    auto interfaces = LiveCapture::listInterfaces();
+    test("Interface listing works", true);
+
+    // Test printInterfaces (no crash)
+    LiveCapture::printInterfaces();
+    test("Print interfaces works", true);
+
+    // Test LiveCapture object creation
+    LiveCapture capture(100);
+    test("LiveCapture created", true);
+    test("Not capturing initially",
+         !capture.isCapturing());
+    test("Zero packets initially",
+         capture.packetsCaptured() == 0);
+
+    // Test getNextPacket on empty queue
+    RawPacket pkt;
+    bool got = capture.getNextPacket(pkt);
+    test("Empty queue returns false", !got);
+}
 
 // ─────────────────────────────────────────
 // Main
@@ -800,6 +826,7 @@ int main()
     testDNSParser();
     testTLSParser();
     testAnomalyDetector();
+    testLiveCapture();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"

@@ -15,7 +15,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-# ── Shared sources (used by all executables) ──
 set(SHARED_SOURCES
     src/flow_features.cpp
     src/training_data.cpp
@@ -40,49 +39,35 @@ set(SHARED_SOURCES
     src/ml_metrics.cpp
     src/protocol_parser.cpp
     src/anomaly_detector.cpp
+    src/live_capture.cpp
 )
-# ── Single-threaded executable ──
+
 add_executable(dpi_engine_pro
     ${SHARED_SOURCES}
     src/main_pro.cpp
 )
-
 target_compile_options(dpi_engine_pro PRIVATE
-    -Wall -Wextra
-)
-
-# Link pthreads for threading support
+    -Wall -Wextra)
 target_link_libraries(dpi_engine_pro
-    pthread
-)
+    pthread ws2_32 iphlpapi)
 
-# ── Multi-threaded executable ──
 add_executable(dpi_mt
     ${SHARED_SOURCES}
     src/dpi_mt.cpp
 )
-
 target_compile_options(dpi_mt PRIVATE
-    -Wall -Wextra
-)
-
+    -Wall -Wextra)
 target_link_libraries(dpi_mt
-    pthread
-)
+    pthread ws2_32 iphlpapi)
 
-# ── Test executable ──
 add_executable(test_classifier
     ${SHARED_SOURCES}
     tests/test_classifier.cpp
 )
-
 target_compile_options(test_classifier PRIVATE
-    -Wall -Wextra
-)
-
+    -Wall -Wextra)
 target_link_libraries(test_classifier
-    pthread
-)
+    pthread ws2_32 iphlpapi)
 
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "Version: ${PROJECT_VERSION}")
