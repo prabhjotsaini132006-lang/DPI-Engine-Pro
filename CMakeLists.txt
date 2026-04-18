@@ -1,20 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
-
 project(DPI-Engine-Pro VERSION 2.0 LANGUAGES CXX)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
-
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
-
 include_directories(${PROJECT_SOURCE_DIR}/include)
-
 set(SHARED_SOURCES
     src/flow_features.cpp
     src/training_data.cpp
@@ -42,6 +36,13 @@ set(SHARED_SOURCES
     src/live_capture.cpp
 )
 
+# Platform-specific libraries
+if(WIN32)
+    set(PLATFORM_LIBS ws2_32 iphlpapi)
+else()
+    set(PLATFORM_LIBS)
+endif()
+
 add_executable(dpi_engine_pro
     ${SHARED_SOURCES}
     src/main_pro.cpp
@@ -49,7 +50,7 @@ add_executable(dpi_engine_pro
 target_compile_options(dpi_engine_pro PRIVATE
     -Wall -Wextra)
 target_link_libraries(dpi_engine_pro
-    pthread ws2_32 iphlpapi)
+    pthread ${PLATFORM_LIBS})
 
 add_executable(dpi_mt
     ${SHARED_SOURCES}
@@ -58,7 +59,7 @@ add_executable(dpi_mt
 target_compile_options(dpi_mt PRIVATE
     -Wall -Wextra)
 target_link_libraries(dpi_mt
-    pthread ws2_32 iphlpapi)
+    pthread ${PLATFORM_LIBS})
 
 add_executable(test_classifier
     ${SHARED_SOURCES}
@@ -67,7 +68,7 @@ add_executable(test_classifier
 target_compile_options(test_classifier PRIVATE
     -Wall -Wextra)
 target_link_libraries(test_classifier
-    pthread ws2_32 iphlpapi)
+    pthread ${PLATFORM_LIBS})
 
 message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "Version: ${PROJECT_VERSION}")
