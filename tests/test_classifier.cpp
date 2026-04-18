@@ -14,6 +14,7 @@
 #include "benchmark.h"
 #include "ml_metrics.h"
 #include "protocol_parser.h"
+#include "anomaly_detector.h"
 #include <iostream>
 #include <cassert>
 
@@ -693,6 +694,80 @@ void testTLSParser()
          pp.parseTLS(nullptr, 0).valid == false);
 }
 
+void testAnomalyDetector()
+{
+    cout << "\n── Test 23: Anomaly Detector ──"
+         << endl;
+
+    AnomalyDetector detector;
+    detector.setPortScanThreshold(3);
+    detector.setHighRateThreshold(1000.0);
+
+    // Test suspicious port detection
+    Flow susp_flow;
+    susp_flow.tuple.src_ip   = 0xC0A80101;
+    susp_flow.tuple.dst_ip   = 0xC0A80102;
+    susp_flow.tuple.dst_port = 4444;
+    susp_flow.tuple.protocol = 6;
+    susp_flow.features.total_packets = 10;
+    susp_flow.features.total_bytes   = 1000;
+    susp_flow.features.packets_per_second = 10.0;
+
+    auto alerts = detector.check(susp_flow);
+    test("Suspicious port 4444 detected",
+         !alerts.empty());
+
+    // Test high packet rate detection
+    detector.clearAlerts();
+    Flow fast_flow;
+    fast_flow.tuple.src_ip   = 0xC0A80103;
+    fast_flow.tuple.dst_ip   = 0xC0A80104;
+    fast_flow.tuple.dst_port = 80;
+    fast_flow.tuple.protocol = 6;
+    fast_flow.features.total_packets = 50000;
+    fast_flow.features.total_bytes   = 5000000;
+    fast_flow.features.packets_per_second = 50000.0;
+
+    auto fast_alerts = detector.check(fast_flow);
+    test("High packet rate detected",
+         !fast_alerts.empty());
+
+    // Test DNS tunneling detection
+    detector.clearAlerts();
+    Flow dns_tunnel;
+    dns_tunnel.tuple.src_ip   = 0xC0A80105;
+    dns_tunnel.tuple.dst_ip   = 0x08080808;
+    dns_tunnel.tuple.dst_port = 53;
+    dns_tunnel.tuple.protocol = 17;
+    dns_tunnel.features.total_packets = 500;
+    dns_tunnel.features.total_bytes   = 50000;
+    dns_tunnel.features.packets_per_second = 10.0;
+
+    auto dns_alerts = detector.check(dns_tunnel);
+    test("DNS tunneling detected",
+         !dns_alerts.empty());
+
+    // Test normal flow no alerts
+    detector.clearAlerts();
+    Flow normal_flow;
+    normal_flow.tuple.src_ip   = 0xC0A80106;
+    normal_flow.tuple.dst_ip   = 0x08080808;
+    normal_flow.tuple.dst_port = 443;
+    normal_flow.tuple.protocol = 6;
+    normal_flow.features.total_packets = 50;
+    normal_flow.features.total_bytes   = 50000;
+    normal_flow.features.packets_per_second = 10.0;
+
+    auto normal_alerts = detector.check(normal_flow);
+    test("Normal HTTPS flow has no alerts",
+         normal_alerts.empty());
+
+    detector.printAlerts();
+    test("Alert count works",
+     detector.alertCount() == 0);
+}
+
+
 // ─────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────
@@ -724,6 +799,7 @@ int main()
     testHTTPParser();
     testDNSParser();
     testTLSParser();
+    testAnomalyDetector();
     cout << "\n═══════════════════════════════════════" << endl;
     cout << "Results: " << tests_passed << " passed, "
                         << tests_failed << " failed"

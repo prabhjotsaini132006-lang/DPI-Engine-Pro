@@ -39,6 +39,7 @@ set(SHARED_SOURCES
     src/benchmark.cpp
     src/ml_metrics.cpp
     src/protocol_parser.cpp
+    src/anomaly_detector.cpp
 )
 # ── Single-threaded executable ──
 add_executable(dpi_engine_pro
