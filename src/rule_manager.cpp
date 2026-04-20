@@ -113,14 +113,8 @@ void RuleManager::addRule(const Rule& rule)
 
 void RuleManager::addDefaultRules()
 {
-    // Block gaming by default
-    Rule gaming_rule;
-    gaming_rule.type     = Rule::Type::BLOCK_APP;
-    gaming_rule.app_type = AppType::GAMING;
-    gaming_rule.comment  = "Block gaming traffic";
-    rules.push_back(gaming_rule);
-
-    cout << "RuleManager: Default rules added" << endl;
+    // No hardcoded defaults — all rules come from rules.txt
+    cout << "RuleManager: Rules loaded from file" << endl;
 }
 
 void RuleManager::printRules() const
