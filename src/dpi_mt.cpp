@@ -6,10 +6,16 @@
 #include "model_evaluator.h"
 #include "ml_metrics.h"
 #include "decision_tree.h"
+
 #include <iostream>
 #include <string>
 #include <thread>
 #include <chrono>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#endif
 
 using namespace std;
 
@@ -91,6 +97,10 @@ void runEvaluation(const DPIConfig& config)
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);
+#endif
+
     cout << "DPI-Engine-Pro v2.0\n";
     cout << "ML-powered Deep Packet Inspection\n";
     cout << "══════════════════════════════════\n\n";
@@ -110,21 +120,21 @@ int main(int argc, char* argv[])
 
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
-        if      (arg == "--input"      && i+1 < argc) config.pcap_file        = argv[++i];
-        else if (arg == "--csv"        && i+1 < argc) config.csv_file         = argv[++i];
-        else if (arg == "--model"      && i+1 < argc) config.model_file       = argv[++i];
-        else if (arg == "--rules"      && i+1 < argc) config.rules_file       = argv[++i];
-        else if (arg == "--trees"      && i+1 < argc) config.rf_trees         = stoi(argv[++i]);
-        else if (arg == "--confidence" && i+1 < argc) config.min_confidence   = stod(argv[++i]);
-        else if (arg == "--interface"  && i+1 < argc) interface_name          = argv[++i];
-        else if (arg == "--verbose")                  config.verbose          = true;
+        if      (arg == "--input"      && i+1 < argc) config.pcap_file          = argv[++i];
+        else if (arg == "--csv"        && i+1 < argc) config.csv_file           = argv[++i];
+        else if (arg == "--model"      && i+1 < argc) config.model_file         = argv[++i];
+        else if (arg == "--rules"      && i+1 < argc) config.rules_file         = argv[++i];
+        else if (arg == "--trees"      && i+1 < argc) config.rf_trees           = stoi(argv[++i]);
+        else if (arg == "--confidence" && i+1 < argc) config.min_confidence     = stod(argv[++i]);
+        else if (arg == "--interface"  && i+1 < argc) interface_name            = argv[++i];
+        else if (arg == "--verbose")                  config.verbose            = true;
         else if (arg == "--blocked-only")             config.print_blocked_only = true;
         else if (arg == "--no-rf")                    config.use_random_forest  = false;
         else if (arg == "--no-reassembly")            config.enable_reassembly  = false;
         else if (arg == "--no-anomaly")               config.enable_anomaly     = false;
-        else if (arg == "--live")                     live_mode   = true;
-        else if (arg == "--evaluate")                 do_evaluate = true;
-        else if (arg == "--list-interfaces")          list_ifaces = true;
+        else if (arg == "--live")                     live_mode                 = true;
+        else if (arg == "--evaluate")                 do_evaluate               = true;
+        else if (arg == "--list-interfaces")          list_ifaces               = true;
         else if (arg == "--help" || arg == "-h") { printUsageMT(argv[0]); return 0; }
     }
 
@@ -203,7 +213,7 @@ int main(int argc, char* argv[])
     while (!SignalHandler::shouldStop()) {
         RawPacket pkt;
         if (capture.getNextPacket(pkt)) {
-            engine.processPacket(pkt);   // ← THE FIX
+            engine.processPacket(pkt);
             packet_count++;
 
             if (packet_count - last_print >= 1000) {
