@@ -67,6 +67,7 @@ public:
     const DPIStats&  getStats()     const;
     const Benchmark& getBenchmark() const;
     void             printReport()  const;
+    void expireFlows(double timestamp_ms);
 
 private:
     DPIConfig         config;

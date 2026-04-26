@@ -210,26 +210,38 @@ int main(int argc, char* argv[])
     uint64_t packet_count = 0;
     uint64_t last_print   = 0;
 
-    while (!SignalHandler::shouldStop()) {
-        RawPacket pkt;
-        if (capture.getNextPacket(pkt)) {
-            engine.processPacket(pkt);
-            packet_count++;
+    auto last_expiry = chrono::steady_clock::now();
 
-            if (packet_count - last_print >= 1000) {
-                last_print = packet_count;
-                const DPIStats& s = engine.getStats();
-                cout << "\r  Captured: "   << packet_count
-                     << " | Classified: " << s.flows_classified.load()
-                     << " | Blocked: "    << s.flows_blocked.load()
-                     << " | Alerts: "     << s.alerts_generated.load()
-                     << "          ";
-                cout.flush();
-            }
-        } else {
-            this_thread::sleep_for(chrono::microseconds(100));
+while (!SignalHandler::shouldStop()) {
+    RawPacket pkt;
+    if (capture.getNextPacket(pkt)) {
+        engine.processPacket(pkt);
+        packet_count++;
+
+        if (packet_count - last_print >= 1000) {
+            last_print = packet_count;
+            const DPIStats& s = engine.getStats();
+            cout << "\r  Captured: "   << packet_count
+                 << " | Classified: " << s.flows_classified.load()
+                 << " | Blocked: "    << s.flows_blocked.load()
+                 << " | Alerts: "     << s.alerts_generated.load()
+                 << "          ";
+            cout.flush();
         }
+    } else {
+        this_thread::sleep_for(chrono::microseconds(100));
     }
+
+    // Expire old flows every 30 seconds
+    auto now = chrono::steady_clock::now();
+    if (chrono::duration_cast<chrono::seconds>(
+            now - last_expiry).count() >= 30) {
+        last_expiry = now;
+        double ts = chrono::duration_cast<chrono::milliseconds>(
+            now.time_since_epoch()).count();
+        engine.expireFlows(ts);
+    }
+}
 
     capture.stopCapture();
     cout << "\n\nStopped. Captured: "

@@ -280,3 +280,9 @@ void DPIEngine::printIP(uint32_t ip) const
          << ((ip >> 8)  & 0xFF) << "."
          << ( ip        & 0xFF);
 }
+
+void DPIEngine::expireFlows(double timestamp_ms)
+{
+    conn_tracker.expireOldFlows(timestamp_ms);
+    fast_path.evictExpired(timestamp_ms);
+}
