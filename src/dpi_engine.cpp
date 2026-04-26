@@ -180,21 +180,37 @@ void DPIEngine::processPacket(const RawPacket& raw)
         bench.recordClassification();
 
     // Verbose
-    if (config.verbose) {
-        if (!config.print_blocked_only || blocked) {
-            printIP(pkt.src_ip);
-            cout << ":" << pkt.src_port << " -> ";
-            printIP(pkt.dst_ip);
-            cout << ":" << pkt.dst_port
-                 << " | " << appTypeToString(app_type);
-            if (!flow.sni.empty())
-                cout << " (" << flow.sni << ")";
-            if (blocked) cout << " [BLOCKED]";
-            if (pkt.protocol == 6)
-                cout << " TCP seq=" << pkt.tcp_seq;
-            cout << "\n";
-        }
+if (config.verbose) {
+    if (!config.print_blocked_only || blocked) {
+        printIP(pkt.src_ip);
+        cout << ":" << pkt.src_port << " -> ";
+        printIP(pkt.dst_ip);
+        cout << ":" << pkt.dst_port
+             << " | " << appTypeToString(app_type);
+
+        // Show classification reason
+        if (!flow.sni.empty())
+            cout << " [SNI:" << flow.sni << "]";
+        else if (app_type != AppType::UNKNOWN)
+            cout << " [ML]";
+        else
+            cout << " [UNKNOWN]";
+
+        // Show protocol
+        cout << (pkt.protocol == 6 ? " TCP" : " UDP");
+
+        // Show port
+        cout << " dst=" << pkt.dst_port;
+
+        // Show TLS
+        if (pkt.is_tls) cout << " TLS";
+
+        // Show blocked
+        if (blocked) cout << " [BLOCKED]";
+
+        cout << "\n";
     }
+}
 }
 
 bool DPIEngine::processPcap(const string& pcap_file)
@@ -272,7 +288,7 @@ void DPIEngine::printReport() const
 
     cout << "═══════════════════════════════════════\n";
 }
-
+s
 void DPIEngine::printIP(uint32_t ip) const
 {
     cout << ((ip >> 24) & 0xFF) << "."
