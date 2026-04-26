@@ -140,4 +140,9 @@ inline AppType sniToAppType(const std::string& sni) {
     return AppType::UNKNOWN;
 }
 
+struct Prediction {
+    AppType app_type   = AppType::UNKNOWN;
+    double  confidence = 0.0;
+};
+
 #endif // TYPES_H

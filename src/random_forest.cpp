@@ -53,6 +53,9 @@ void RandomForest::train(const vector<FlowFeatures>& data)
 
         DecisionTree* tree =
             new DecisionTree(max_depth, min_samples);
+
+        tree->setFeatureSubsampling(true);  // TRUE RANDOM FOREST
+
         tree->train(subset);
         trees.push_back(tree);
 
@@ -80,7 +83,6 @@ AppType RandomForest::predict(
 
     AppType best_app   = AppType::UNKNOWN;
     int     best_votes = 0;
-
     for (const auto& pair : votes) {
         if (pair.second > best_votes) {
             best_votes = pair.second;
@@ -115,7 +117,6 @@ Prediction RandomForest::predictWithConfidence(
 
     AppType best_app   = AppType::UNKNOWN;
     int     best_votes = 0;
-
     for (const auto& pair : votes) {
         if (pair.second > best_votes) {
             best_votes = pair.second;
@@ -128,4 +129,56 @@ Prediction RandomForest::predictWithConfidence(
                         (double)n_trees;
 
     return result;
+}
+
+bool RandomForest::saveModel(const string& filename) const
+{
+    ofstream file(filename);
+    if (!file.is_open()) {
+        cerr << "RandomForest: Cannot save to "
+             << filename << "\n";
+        return false;
+    }
+
+    file << "RF_V2\n";
+    file << trees.size() << "\n";
+    for (const auto* tree : trees) {
+        tree->save(file);  // calls saveNode internally
+    }
+
+    cout << "RandomForest: Model saved to "
+         << filename << "\n";
+    return true;
+}
+
+bool RandomForest::loadModel(const string& filename)
+{
+    ifstream file(filename);
+    if (!file.is_open()) return false;
+
+    string header;
+    getline(file, header);
+    if (header != "RF_V2") {
+        cerr << "RandomForest: Invalid model format\n";
+        return false;
+    }
+
+    int n_trees;
+    file >> n_trees;
+    file.ignore();
+
+    for (auto* t : trees) delete t;
+    trees.clear();
+
+    for (int i = 0; i < n_trees; i++) {
+        DecisionTree* tree =
+            new DecisionTree(max_depth, min_samples);
+        tree->load(file);  // calls loadNode internally
+        trees.push_back(tree);
+    }
+
+    trained = true;
+    cout << "RandomForest: Loaded " << n_trees
+         << " trees from " << filename << "\n";
+    return true;
 }

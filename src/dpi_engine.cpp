@@ -35,23 +35,32 @@ bool DPIEngine::initialize()
     cout << "DPIEngine: Initializing...\n";
 
     cout << "\n[1/4] Loading ML model...\n";
-    if (config.use_random_forest) {
+if (config.use_random_forest) {
+
+    // Try loading saved model first
+    if (!config.model_file.empty() &&
+        random_forest.loadModel(config.model_file)) {
+        cout << "      Loaded saved model from "
+             << config.model_file << "\n";
+    } else {
+        // Train from scratch
         TrainingData td;
         if (!td.loadCSV(config.csv_file)) {
             cerr << "DPIEngine: Failed to load CSV\n";
             return false;
         }
         random_forest.train(td.getData());
+
+        // Save for next time
+        if (!config.model_file.empty()) {
+            random_forest.saveModel(config.model_file);
+            cout << "      Model saved to "
+                 << config.model_file << "\n";
+        }
         cout << "      Random Forest ready ("
              << config.rf_trees << " trees)\n";
-    } else {
-        if (!ml_classifier.loadOrTrain(
-                config.csv_file, config.model_file)) {
-            cerr << "DPIEngine: Failed to load model\n";
-            return false;
-        }
     }
-
+}
     cout << "\n[2/4] Loading rules...\n";
     if (!config.rules_file.empty())
         rule_manager.loadRules(config.rules_file);

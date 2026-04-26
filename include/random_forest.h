@@ -20,6 +20,8 @@ public:
     Prediction predictWithConfidence(
                 const FlowFeatures& flow) const;
     bool    isTrained() const { return trained; }
+    bool saveModel(const std::string& filename) const;
+    bool loadModel(const std::string& filename);
 
 private:
     int  n_trees     = 10;

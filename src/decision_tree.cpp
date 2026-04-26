@@ -4,6 +4,7 @@
 #include <fstream>
 #include <map>
 #include <limits>
+#include <cmath>
 
 using namespace std;
 
@@ -120,7 +121,22 @@ double DecisionTree::bestSplit(
     best_threshold   = 0.0;
     double total     = (double)data.size();
 
-    for (int feature = 0; feature < 12; feature++) {
+  vector<int> features_to_try;
+if (use_feature_subsampling) {
+    vector<int> all_features = {0,1,2,3,4,5,6,7,8,9,10,11};
+    for (int i = 11; i > 0; i--) {
+        int j = rand() % (i + 1);
+        swap(all_features[i], all_features[j]);
+    }
+    int n_try = max(1, (int)sqrt(12.0)); // = 3
+    features_to_try.assign(
+        all_features.begin(),
+        all_features.begin() + n_try);
+} else {
+    features_to_try = {0,1,2,3,4,5,6,7,8,9,10,11};
+}
+
+for (int feature : features_to_try) {
 
         vector<double> values;
         for (const auto& f : data) {
@@ -161,33 +177,45 @@ double DecisionTree::bestSplit(
 Node* DecisionTree::buildTree(
     vector<FlowFeatures> data, int depth)
 {
-    if (allSameClass(data)) {
-        Node* leaf = new Node();
-        leaf->leaf_label = data[0].label;
-        return leaf;
-    }
+   if (allSameClass(data)) {
+    Node* leaf = new Node();
+    leaf->leaf_label    = data[0].label;
+    leaf->total_samples = (int)data.size();
+    for (const auto& f : data)
+        leaf->class_counts[f.label]++;
+    return leaf;
+}
 
     if (depth >= max_depth) {
-        Node* leaf = new Node();
-        leaf->leaf_label = majorityClass(data);
-        return leaf;
-    }
+    Node* leaf = new Node();
+    leaf->leaf_label    = majorityClass(data);
+    leaf->total_samples = (int)data.size();
+    for (const auto& f : data)
+        leaf->class_counts[f.label]++;
+    return leaf;
+}
 
     if ((int)data.size() < min_samples) {
-        Node* leaf = new Node();
-        leaf->leaf_label = majorityClass(data);
-        return leaf;
-    }
+    Node* leaf = new Node();
+    leaf->leaf_label    = majorityClass(data);
+    leaf->total_samples = (int)data.size();
+    for (const auto& f : data)
+        leaf->class_counts[f.label]++;
+    return leaf;
+}
 
     int    best_feature;
     double best_threshold;
     bestSplit(data, best_feature, best_threshold);
 
-    if (best_feature == -1) {
-        Node* leaf = new Node();
-        leaf->leaf_label = majorityClass(data);
-        return leaf;
-    }
+   if (best_feature == -1) {
+    Node* leaf = new Node();
+    leaf->leaf_label    = majorityClass(data);
+    leaf->total_samples = (int)data.size();
+    for (const auto& f : data)
+        leaf->class_counts[f.label]++;
+    return leaf;
+}
 
     vector<FlowFeatures> left_data, right_data;
     for (const auto& f : data) {
@@ -197,13 +225,13 @@ Node* DecisionTree::buildTree(
             right_data.push_back(f);
     }
 
-    Node* node          = new Node();
-    node->feature_index = best_feature;
-    node->threshold     = best_threshold;
-    node->left          = buildTree(left_data,  depth + 1);
-    node->right         = buildTree(right_data, depth + 1);
-
-    return node;
+ Node* node          = new Node();
+node->is_split      = true;    // ← ADD THIS LINE
+node->feature_index = best_feature;
+node->threshold     = best_threshold;
+node->left          = buildTree(left_data,  depth + 1);
+node->right         = buildTree(right_data, depth + 1);
+return node;
 }
 
 void DecisionTree::train(const vector<FlowFeatures>& data)
@@ -272,15 +300,21 @@ void DecisionTree::saveNode(const Node* node,
     }
 
     if (node->isLeaf()) {
-        file << "LEAF " << (int)node->leaf_label << "\n";
+        file << "LEAF " << (int)node->leaf_label
+             << " " << node->total_samples << "\n";
+        // Save class distribution
+        file << node->class_counts.size() << "\n";
+        for (const auto& pair : node->class_counts) {
+            file << (int)pair.first
+                 << " " << pair.second << "\n";
+        }
     } else {
         file << "NODE " << node->feature_index
-             << " "     << node->threshold << "\n";
+             << " " << node->threshold << "\n";
         saveNode(node->left,  file);
         saveNode(node->right, file);
     }
 }
-
 void DecisionTree::save(const string& filename) const
 {
     ofstream file(filename);
@@ -305,15 +339,24 @@ Node* DecisionTree::loadNode(ifstream& file)
     if (type == "LEAF") {
         int label;
         file >> label;
-        node->leaf_label = (AppType)label;
+        node->leaf_label    = (AppType)label;
+        file >> node->total_samples;
+
+        int n_counts;
+        file >> n_counts;
+        for (int i = 0; i < n_counts; i++) {
+            int app, count;
+            file >> app >> count;
+            node->class_counts[(AppType)app] = count;
+        }
     } else {
         file >> node->feature_index >> node->threshold;
-        node->left  = loadNode(file);
-        node->right = loadNode(file);
+        node->is_split = true;
+        node->left     = loadNode(file);
+        node->right    = loadNode(file);
     }
     return node;
 }
-
 void DecisionTree::load(const string& filename)
 {
     ifstream file(filename);
@@ -325,4 +368,49 @@ void DecisionTree::load(const string& filename)
     deleteTree(root);
     root = loadNode(file);
     cout << "Model loaded from " << filename << endl;
+}
+
+Prediction DecisionTree::predictWithConfidence(
+    const FlowFeatures& flow) const
+{
+    Prediction result;
+
+    if (root == nullptr) {
+        result.app_type   = AppType::UNKNOWN;
+        result.confidence = 0.0;
+        return result;
+    }
+
+    // Walk to leaf
+    const Node* node = root;
+    while (!node->isLeaf()) {
+        double val = getFeature(flow, node->feature_index);
+        node = (val <= node->threshold) ?
+               node->left : node->right;
+    }
+
+    result.app_type = node->leaf_label;
+
+    // REAL confidence from leaf distribution
+    if (node->total_samples > 0 &&
+        node->class_counts.count(node->leaf_label)) {
+        result.confidence =
+            (double)node->class_counts.at(node->leaf_label) /
+            (double)node->total_samples;
+    } else {
+        result.confidence = 0.5;
+    }
+
+    return result;
+}
+
+void DecisionTree::save(ofstream& file) const
+{
+    saveNode(root, file);
+}
+
+void DecisionTree::load(ifstream& file)
+{
+    deleteTree(root);
+    root = loadNode(file);
 }
