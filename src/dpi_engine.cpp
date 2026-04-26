@@ -288,7 +288,7 @@ void DPIEngine::printReport() const
 
     cout << "═══════════════════════════════════════\n";
 }
-s
+
 void DPIEngine::printIP(uint32_t ip) const
 {
     cout << ((ip >> 24) & 0xFF) << "."
