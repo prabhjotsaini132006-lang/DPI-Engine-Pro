@@ -81,6 +81,56 @@ if (config.use_random_forest) {
     return true;
 }
 
+// Add this helper at top of dpi_engine.cpp
+static AppType classifyByIPPort(uint32_t dst_ip, uint16_t dst_port, uint8_t protocol)
+{
+    // Google IPs: 142.250.x.x, 142.251.x.x, 216.239.x.x, 172.217.x.x
+    uint8_t b1 = (dst_ip >> 24) & 0xFF;
+    uint8_t b2 = (dst_ip >> 16) & 0xFF;
+
+    if (b1 == 142 && b2 == 250) {
+        // YouTube uses QUIC (UDP/443) heavily
+        if (protocol == 17 && dst_port == 443) return AppType::YOUTUBE;
+        if (protocol == 6  && dst_port == 443) return AppType::HTTPS;
+    }
+    if (b1 == 142 && b2 == 251) {
+        if (protocol == 17 && dst_port == 443) return AppType::YOUTUBE;
+        if (protocol == 6  && dst_port == 443) return AppType::HTTPS;
+    }
+    if (b1 == 216 && b2 == 239) {
+        return AppType::YOUTUBE; // Google video CDN
+    }
+    if (b1 == 172 && b2 == 217) {
+        return AppType::YOUTUBE;
+    }
+
+    // WhatsApp: Meta IPs 157.240.x.x, 31.13.x.x, also 103.3.x.x (India)
+    if (b1 == 157 && b2 == 240) return AppType::WHATSAPP;
+    if (b1 == 31  && b2 == 13)  return AppType::WHATSAPP;
+    if (b1 == 103 && b2 == 3)   return AppType::WHATSAPP;
+    if (b1 == 103 && b2 == 4)   return AppType::WHATSAPP;
+
+    // Reddit / Fastly CDN
+    if (b1 == 151 && b2 == 101) return AppType::HTTPS;
+
+    // Cloudflare
+    if (b1 == 104 && b2 == 18)  return AppType::HTTPS;
+
+    // Amazon/AWS
+    if (b1 == 54 || b1 == 18 || b1 == 13) {
+        if (dst_port == 443) return AppType::HTTPS;
+    }
+
+    // DNS
+    if (dst_port == 53)  return AppType::DNS;
+
+    // Generic HTTPS/HTTP
+    if (dst_port == 443) return AppType::HTTPS;
+    if (dst_port == 80)  return AppType::HTTP;
+
+    return AppType::UNKNOWN;
+}
+
 AppType DPIEngine::classifyFlow(Flow& flow)
 {
     CacheEntry cache_entry;
@@ -91,6 +141,7 @@ AppType DPIEngine::classifyFlow(Flow& flow)
 
     AppType result = AppType::UNKNOWN;
 
+    // 1. SNI-based (highest confidence)
     if (!flow.sni.empty()) {
         result = sniToAppType(flow.sni);
         if (result != AppType::UNKNOWN) {
@@ -101,7 +152,8 @@ AppType DPIEngine::classifyFlow(Flow& flow)
         }
     }
 
-    if (flow.features.total_packets >= 5) {
+    // 2. ML-based (lower threshold for live traffic)
+    if (flow.features.total_packets >= 2) {  // lowered from 5
         Prediction pred;
         if (config.use_random_forest)
             pred = random_forest.predictWithConfidence(flow.features);
@@ -114,7 +166,22 @@ AppType DPIEngine::classifyFlow(Flow& flow)
             fast_path.insert(flow.tuple, result, false,
                              pred.confidence,
                              flow.features.flow_duration_ms);
+            return result;
         }
+    }
+
+    // 3. IP/port heuristic fallback
+    AppType heuristic = classifyByIPPort(
+        flow.tuple.dst_ip,
+        flow.tuple.dst_port,
+        flow.tuple.protocol);
+
+    if (heuristic != AppType::UNKNOWN) {
+        result = heuristic;
+        stats.sni_classified++;  // count as classified
+        fast_path.insert(flow.tuple, result, false, 0.7,
+                         flow.features.flow_duration_ms);
+        return result;
     }
 
     if (result == AppType::UNKNOWN)
@@ -122,7 +189,6 @@ AppType DPIEngine::classifyFlow(Flow& flow)
 
     return result;
 }
-
 void DPIEngine::processPacket(const RawPacket& raw)
 {
     if (config.enable_benchmark)

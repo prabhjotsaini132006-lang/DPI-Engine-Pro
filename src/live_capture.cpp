@@ -123,6 +123,12 @@ void LiveCapture::captureLoop()
 {
     vector<uint8_t> buf(65536);
 
+    static const uint8_t FAKE_ETH[14] = {
+        0x00,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x00,0x00,
+        0x08, 0x00
+    };
+
     while (capturing) {
         int bytes = recv(raw_socket,
                         (char*)buf.data(),
@@ -136,14 +142,17 @@ void LiveCapture::captureLoop()
         RawPacket pkt;
         pkt.timestamp_ms = getCurrentTimeMs();
         pkt.original_len = (uint32_t)bytes;
-        pkt.data.assign(buf.begin(),
+        pkt.data.reserve(14 + bytes);
+        pkt.data.insert(pkt.data.end(),
+                        FAKE_ETH, FAKE_ETH + 14);
+        pkt.data.insert(pkt.data.end(),
+                        buf.begin(),
                         buf.begin() + bytes);
 
         packet_queue.push(move(pkt));
         packets_captured++;
     }
 }
-
 void LiveCapture::close()
 {
     if (raw_socket != INVALID_SOCKET) {
@@ -241,10 +250,18 @@ void LiveCapture::captureLoop()
 {
     vector<uint8_t> buf(65536);
 
+    // Windows SOCK_RAW gives IP packets without Ethernet header
+    // Prepend fake 14-byte Ethernet header so PacketParser works
+    static const uint8_t FAKE_ETH[14] = {
+        0x00,0x00,0x00,0x00,0x00,0x00,  // dst mac
+        0x00,0x00,0x00,0x00,0x00,0x00,  // src mac
+        0x08, 0x00                       // ethertype IPv4
+    };
+
     while (capturing) {
         int bytes = recv(raw_socket,
-                        buf.data(),
-                        buf.size(), 0);
+                        (char*)buf.data(),
+                        (int)buf.size(), 0);
 
         if (bytes <= 0) {
             if (!capturing) break;
@@ -254,14 +271,19 @@ void LiveCapture::captureLoop()
         RawPacket pkt;
         pkt.timestamp_ms = getCurrentTimeMs();
         pkt.original_len = (uint32_t)bytes;
-        pkt.data.assign(buf.begin(),
+
+        // Prepend fake Ethernet header then append IP data
+        pkt.data.reserve(14 + bytes);
+        pkt.data.insert(pkt.data.end(),
+                        FAKE_ETH, FAKE_ETH + 14);
+        pkt.data.insert(pkt.data.end(),
+                        buf.begin(),
                         buf.begin() + bytes);
 
         packet_queue.push(move(pkt));
         packets_captured++;
     }
 }
-
 void LiveCapture::close()
 {
     if (raw_socket >= 0) {
