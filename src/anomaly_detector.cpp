@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <ctime>
+#include <iomanip>
 
 using namespace std;
 
@@ -67,8 +68,7 @@ AnomalyAlert AnomalyDetector::checkPortScan(const Flow& flow)
 {
     AnomalyAlert alert;
 
-    // Skip DNS traffic — router replies to many ephemeral ports
-    // which looks like a port scan but is normal DNS behaviour
+    // Skip DNS — routers reply to many ephemeral ports
     if (flow.tuple.src_port == 53 || flow.tuple.dst_port == 53)
         return alert;
 
@@ -92,18 +92,59 @@ AnomalyAlert AnomalyDetector::checkPortScan(const Flow& flow)
     return alert;
 }
 
+// ─────────────────────────────────────────
+// Statistical high-rate detection
+//
+// For each source IP we maintain a rolling mean
+// and standard deviation of packets/sec across
+// all flows seen from that IP.
+//
+// A flow is flagged if its rate is:
+//   (a) more than z_threshold stddevs above that
+//       IP's own baseline, AND
+//   (b) above a minimum floor (to avoid alerting
+//       on tiny variation around zero)
+//
+// Falls back to the hard threshold if no baseline
+// has been established yet (< 5 flows seen).
+// ─────────────────────────────────────────
 AnomalyAlert AnomalyDetector::checkHighRate(const Flow& flow)
 {
     AnomalyAlert alert;
-    if (flow.features.packets_per_second > high_rate_threshold) {
+    uint32_t src = flow.tuple.src_ip;
+    double   pps = flow.features.packets_per_second;
+
+    IpProfile& profile = ip_profiles[src];
+
+    // Update this IP's baseline with the current flow
+    profile.pkt_rate.update(pps);
+
+    double z = profile.pkt_rate.zscore(pps);
+
+    bool statistical_alert = (z >= z_threshold) && (pps > 100.0);
+    bool hard_alert        = (profile.pkt_rate.count < 5) &&
+                             (pps > high_rate_threshold);
+
+    if (statistical_alert || hard_alert) {
+        double severity = min(1.0, 0.5 + (z / 20.0));
+        if (hard_alert) severity = 0.7;
+
+        ostringstream desc;
+        desc << "High packet rate: " << fixed << setprecision(1)
+             << pps << " pkt/s from " << ipToStr(src);
+        if (statistical_alert) {
+            desc << " (z=" << fixed << setprecision(1) << z
+                 << ", baseline mean=" << fixed << setprecision(1)
+                 << profile.pkt_rate.mean << ")";
+        }
+
         alert.type        = AnomalyType::HIGH_PACKET_RATE;
-        alert.src_ip      = flow.tuple.src_ip;
+        alert.src_ip      = src;
         alert.dst_ip      = flow.tuple.dst_ip;
-        alert.severity    = 0.7;
+        alert.severity    = severity;
+        alert.z_score     = z;
         alert.timestamp   = getCurrentTime();
-        alert.description = "High packet rate: " +
-                            to_string((int)flow.features.packets_per_second) +
-                            " pkt/s from " + ipToStr(flow.tuple.src_ip);
+        alert.description = desc.str();
     }
     return alert;
 }
@@ -129,33 +170,107 @@ AnomalyAlert AnomalyDetector::checkSuspiciousPort(const Flow& flow)
 AnomalyAlert AnomalyDetector::checkLargeFlow(const Flow& flow)
 {
     AnomalyAlert alert;
-    if (flow.features.total_bytes > large_flow_threshold) {
+    uint32_t src   = flow.tuple.src_ip;
+    double   bytes = static_cast<double>(flow.features.total_bytes);
+
+    IpProfile& profile = ip_profiles[src];
+    profile.flow_bytes.update(bytes);
+
+    double z = profile.flow_bytes.zscore(bytes);
+
+    bool statistical_alert = (z >= z_threshold) &&
+                             (bytes > 1000000);  // > 1 MB floor
+    bool hard_alert        = (profile.flow_bytes.count < 5) &&
+                             (flow.features.total_bytes > large_flow_threshold);
+
+    if (statistical_alert || hard_alert) {
+        double severity = min(1.0, 0.4 + (z / 20.0));
+        if (hard_alert) severity = 0.5;
+
+        ostringstream desc;
+        desc << "Unusually large flow: "
+             << (flow.features.total_bytes / 1048576) << " MB from "
+             << ipToStr(src);
+        if (statistical_alert) {
+            desc << " (z=" << fixed << setprecision(1) << z << ")";
+        }
+
         alert.type        = AnomalyType::LARGE_FLOW;
-        alert.src_ip      = flow.tuple.src_ip;
+        alert.src_ip      = src;
         alert.dst_ip      = flow.tuple.dst_ip;
-        alert.severity    = 0.5;
+        alert.severity    = severity;
+        alert.z_score     = z;
         alert.timestamp   = getCurrentTime();
-        alert.description = "Large flow: " +
-                            to_string(flow.features.total_bytes / 1048576) +
-                            " MB from " + ipToStr(flow.tuple.src_ip);
+        alert.description = desc.str();
     }
     return alert;
 }
 
+// ─────────────────────────────────────────
+// Statistical DNS tunneling detection
+//
+// Normal DNS flows are tiny — a few hundred bytes
+// at most. Tunneling hides data in DNS, so flows
+// become unusually large for that protocol.
+//
+// For each source IP we track a rolling baseline
+// of DNS flow sizes. A DNS flow is flagged if:
+//   (a) z-score >= threshold (statistically anomalous
+//       relative to this IP's own DNS history), OR
+//   (b) bytes > hard floor (10 KB) when no baseline
+//       exists yet
+//
+// The z-score approach means a host that legitimately
+// sends slightly larger DNS flows won't be flagged —
+// only genuinely anomalous spikes trigger alerts.
+// ─────────────────────────────────────────
 AnomalyAlert AnomalyDetector::checkDNSTunneling(const Flow& flow)
 {
     AnomalyAlert alert;
-    if (flow.tuple.dst_port == 53 &&
-        flow.features.total_bytes > 10000) {
+
+    if (flow.tuple.dst_port != 53 && flow.tuple.src_port != 53)
+        return alert;
+
+    uint32_t src   = flow.tuple.src_ip;
+    double   bytes = static_cast<double>(flow.features.total_bytes);
+
+    IpProfile& profile = ip_profiles[src];
+
+    // Update DNS baseline for this source IP
+    profile.dns_bytes.update(bytes);
+
+    double z = profile.dns_bytes.zscore(bytes);
+
+    // Statistical alert: significantly above this IP's baseline
+    bool statistical_alert = (z >= z_threshold);
+
+    // Hard fallback: very large DNS flow with no baseline yet
+    bool hard_alert = (profile.dns_bytes.count < 5) &&
+                      (flow.features.total_bytes > dns_hard_threshold);
+
+    if (statistical_alert || hard_alert) {
+        // Severity scales with z-score: 3σ → 0.70, 6σ → 0.85, 10σ → 1.0
+        double severity = min(1.0, 0.55 + (z / 20.0));
+        if (hard_alert && !statistical_alert) severity = 0.75;
+
+        ostringstream desc;
+        desc << "Possible DNS tunneling: "
+             << flow.features.total_bytes
+             << " bytes in DNS flow from "
+             << ipToStr(src);
+        if (statistical_alert) {
+            desc << " (z=" << fixed << setprecision(1) << z
+                 << ", baseline mean=" << fixed << setprecision(0)
+                 << profile.dns_bytes.mean << " bytes)";
+        }
+
         alert.type        = AnomalyType::DNS_TUNNELING;
-        alert.src_ip      = flow.tuple.src_ip;
+        alert.src_ip      = src;
         alert.dst_ip      = flow.tuple.dst_ip;
-        alert.severity    = 0.85;
+        alert.severity    = severity;
+        alert.z_score     = z;
         alert.timestamp   = getCurrentTime();
-        alert.description = "Possible DNS tunneling: " +
-                            to_string(flow.features.total_bytes) +
-                            " bytes in DNS flow from " +
-                            ipToStr(flow.tuple.src_ip);
+        alert.description = desc.str();
     }
     return alert;
 }
@@ -179,7 +294,12 @@ vector<AnomalyAlert> AnomalyDetector::check(const Flow& flow)
         cout << "\n[ALERT][" << a.timestamp << "] "
              << anomalyTypeStr(a.type) << "\n"
              << "  " << a.description << "\n"
-             << "  Severity: " << (int)(a.severity * 100) << "%\n";
+             << "  Severity: " << (int)(a.severity * 100) << "%";
+        if (a.z_score > 0.0) {
+            cout << "  |  Z-score: " << fixed << setprecision(1)
+                 << a.z_score << "σ above baseline";
+        }
+        cout << "\n";
     }
 
     return alerts;
@@ -193,7 +313,12 @@ void AnomalyDetector::printAlerts() const
         cout << "[" << a.timestamp << "] "
              << "[" << anomalyTypeStr(a.type) << "] "
              << a.description << "\n"
-             << "  Severity: " << (int)(a.severity * 100) << "%\n\n";
+             << "  Severity: " << (int)(a.severity * 100) << "%";
+        if (a.z_score > 0.0) {
+            cout << "  |  Z-score: " << fixed << setprecision(1)
+                 << a.z_score << "σ";
+        }
+        cout << "\n\n";
     }
 }
 
@@ -203,6 +328,7 @@ void AnomalyDetector::clearAlerts()
 {
     all_alerts.clear();
     ip_ports_seen.clear();
+    ip_profiles.clear();   // reset all baselines too
 }
 
 void AnomalyDetector::setPortScanThreshold(int ports)   { port_scan_threshold  = ports; }
