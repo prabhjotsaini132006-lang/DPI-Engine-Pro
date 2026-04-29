@@ -101,18 +101,18 @@ void testYouTubePrediction()
     MLClassifier classifier;
     classifier.train("../data/training_flows.csv");
 
-    // Use exact values from training CSV row 1
-    // 47,185000,3936,1400,800,2500,18,74000,53,443,6,1,YOUTUBE
+   // Values from actual training row (new dataset)
+    // 330,520031,1575.9,1514,720,220220.1,1.5,2361.41,1.126,443,6,1,YOUTUBE
     FlowFeatures yt;
-    yt.total_packets        = 47;
-    yt.total_bytes          = 185000;
-    yt.avg_packet_size      = 3936.0;
-    yt.max_packet_size      = 1400;
-    yt.min_packet_size      = 800;
-    yt.flow_duration_ms     = 2500.0;
-    yt.packets_per_second   = 18.0;
-    yt.bytes_per_second     = 74000.0;
-    yt.avg_inter_arrival_ms = 53.0;
+    yt.total_packets        = 330;
+    yt.total_bytes          = 520031;
+    yt.avg_packet_size      = 1575.9;
+    yt.max_packet_size      = 1514;
+    yt.min_packet_size      = 720;
+    yt.flow_duration_ms     = 220220.1;
+    yt.packets_per_second   = 1.5;
+    yt.bytes_per_second     = 2361.41;
+    yt.avg_inter_arrival_ms = 1.126;
     yt.dst_port             = 443;
     yt.protocol             = 6;
     yt.has_tls              = true;
