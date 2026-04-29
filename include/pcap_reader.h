@@ -10,9 +10,10 @@
 // Raw packet as read from .pcap file
 // ─────────────────────────────────────────
 struct RawPacket {
-    std::vector<uint8_t> data;        // raw bytes
-    double               timestamp_ms; // when was it captured
-    uint32_t             original_len; // original packet length
+    std::vector<uint8_t> data;
+    uint32_t             original_len  = 0;
+    double               timestamp_ms  = 0.0;
+    bool                 has_ethernet  = true;  // ← ADD THIS
 };
 
 // ─────────────────────────────────────────
